@@ -108,6 +108,7 @@
 		F318DFE920E738C000260914 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318DFE820E738C000260914 /* Photos.framework */; };
 		F318E01320E78D2800260914 /* InertialRecorder.m in Sources */ = {isa = PBXBuildFile; fileRef = F318E01120E78D2700260914 /* InertialRecorder.m */; };
 		F318E01420E79AE300260914 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
+		F318E01420E79AE300260915 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C1156CB42100512475 /* CoreLocation.framework */; };
 		F318E01620E79B5E00260914 /* MessageUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318E01520E79B5E00260914 /* MessageUI.framework */; };
 		F36A3A7D20D7F18600AA1C57 /* RosyWriterViewController+Helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F36A3A7C20D7F18600AA1C57 /* RosyWriterViewController+Helper.m */; };
 		F3A7D427235C141E001EE9C3 /* CameraControlFunctions.m in Sources */ = {isa = PBXBuildFile; fileRef = F3A7D426235C141E001EE9C3 /* CameraControlFunctions.m */; };
@@ -122,8 +123,11 @@
 		F3C1A8CA229453DC00A59A8E /* RosyWriterViewController+Helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F36A3A7C20D7F18600AA1C57 /* RosyWriterViewController+Helper.m */; };
 		F3C1A8D42294588000A59A8E /* MessageUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318E01520E79B5E00260914 /* MessageUI.framework */; };
 		F3C1A8D622945BF200A59A8E /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
+		F3C1A8D622945BF200A59A8F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C1156CB42100512475 /* CoreLocation.framework */; };
 		F3C1A8D722945C0100A59A8E /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
+		F3C1A8D722945C0100A59A8F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C1156CB42100512475 /* CoreLocation.framework */; };
 		F3C1A8D822945C1500A59A8E /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
+		F3C1A8D822945C1500A59A8F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C1156CB42100512475 /* CoreLocation.framework */; };
 		F3C1A8D922945CDB00A59A8E /* MessageUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318E01520E79B5E00260914 /* MessageUI.framework */; };
 		F3C1A8DD22945F9200A59A8E /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F3C1A8DC22945F9200A59A8E /* opencv2.framework */; };
 		F3C1DB562296E1540060170F /* AssetsLibrary.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F90DE001395CCBE00125BDA /* AssetsLibrary.framework */; };
@@ -159,6 +163,7 @@
 		262F9EB519A7CA8D001BB393 /* myFilter.fsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; name = myFilter.fsh; path = Resources/Shaders/myFilter.fsh; sourceTree = SOURCE_ROOT; };
 		262F9EB619A7CA8D001BB393 /* myFilter.vsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; name = myFilter.vsh; path = Resources/Shaders/myFilter.vsh; sourceTree = SOURCE_ROOT; };
 		269351C0156CB42100512474 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
+		269351C1156CB42100512475 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		28365598139FE71B00D09100 /* ReadMe.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ReadMe.txt; sourceTree = "<group>"; };
 		5DC09BED19B7F1A70025A16E /* RosyWriterRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = RosyWriterRenderer.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		5DC09BEE19B7F5100025A16E /* RosyWriterCPURenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RosyWriterCPURenderer.h; sourceTree = "<group>"; };
@@ -221,6 +226,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F3C1A8D722945C0100A59A8E /* CoreMotion.framework in Frameworks */,
+				F3C1A8D722945C0100A59A8F /* CoreLocation.framework in Frameworks */,
 				F3C1A8D922945CDB00A59A8E /* MessageUI.framework in Frameworks */,
 				1756C9E219BE5E1F0080DD55 /* ImageIO.framework in Frameworks */,
 				1756C9E419BE5E1F0080DD55 /* CoreMedia.framework in Frameworks */,
@@ -243,6 +249,7 @@
 			files = (
 				F3C1A8D42294588000A59A8E /* MessageUI.framework in Frameworks */,
 				F3C1A8D822945C1500A59A8E /* CoreMotion.framework in Frameworks */,
+				F3C1A8D822945C1500A59A8F /* CoreLocation.framework in Frameworks */,
 				1FCCE65419BA80A5009D7A6B /* ImageIO.framework in Frameworks */,
 				F3CDB8C623D56CB900799F34 /* Photos.framework in Frameworks */,
 				1FCCE65619BA80A5009D7A6B /* CoreMedia.framework in Frameworks */,
@@ -265,6 +272,7 @@
 				F3C1DB562296E1540060170F /* AssetsLibrary.framework in Frameworks */,
 				F3C1A8DD22945F9200A59A8E /* opencv2.framework in Frameworks */,
 				F3C1A8D622945BF200A59A8E /* CoreMotion.framework in Frameworks */,
+				F3C1A8D622945BF200A59A8F /* CoreLocation.framework in Frameworks */,
 				696D281419CA539900A23D81 /* ImageIO.framework in Frameworks */,
 				696D281619CA539900A23D81 /* CoreMedia.framework in Frameworks */,
 				696D281719CA539900A23D81 /* QuartzCore.framework in Frameworks */,
@@ -284,6 +292,7 @@
 			files = (
 				F318E01620E79B5E00260914 /* MessageUI.framework in Frameworks */,
 				F318E01420E79AE300260914 /* CoreMotion.framework in Frameworks */,
+				F318E01420E79AE300260915 /* CoreLocation.framework in Frameworks */,
 				F318DFE920E738C000260914 /* Photos.framework in Frameworks */,
 				6F096BFA157ED5110075E328 /* ImageIO.framework in Frameworks */,
 				6F90DE0B1395CCF500125BDA /* CoreMedia.framework in Frameworks */,
@@ -372,6 +381,7 @@
 				6F90DDDD1395CAAA00125BDA /* CoreGraphics.framework */,
 				6F90DE0A1395CCF500125BDA /* CoreMedia.framework */,
 				269351C0156CB42100512474 /* CoreMotion.framework */,
+				269351C1156CB42100512475 /* CoreLocation.framework */,
 				6F90DE061395CCE000125BDA /* CoreVideo.framework */,
 				6F90DDDB1395CAAA00125BDA /* Foundation.framework */,
 				6F096BF9157ED5110075E328 /* ImageIO.framework */,
@@ -575,7 +585,7 @@
 					};
 					6F90DDD41395CAAA00125BDA = {
 						CreatedOnToolsVersion = 8.0;
-						DevelopmentTeam = UU4S8L4KDL;
+						DevelopmentTeam = HXFFL3AL6D;
 						ProvisioningStyle = Automatic;
 					};
 					F3FA8C4B23A39F57006CEF03 = {
@@ -1059,7 +1069,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = UU4S8L4KDL;
+				DEVELOPMENT_TEAM = HXFFL3AL6D;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MarsLogger-Prefix.pch";
 				INFOPLIST_FILE = "MarsLogger-Info.plist";
@@ -1081,7 +1091,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = UU4S8L4KDL;
+				DEVELOPMENT_TEAM = HXFFL3AL6D;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MarsLogger-Prefix.pch";
 				INFOPLIST_FILE = "MarsLogger-Info.plist";

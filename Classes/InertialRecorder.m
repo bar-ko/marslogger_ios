@@ -2,6 +2,7 @@
 #import "InertialRecorder.h"
 
 #import <CoreMotion/CoreMotion.h>
+#import <CoreLocation/CoreLocation.h>
 
 #import "VideoTimeConverter.h"
 
@@ -13,13 +14,18 @@ const double RATE = 100; // fps for inertial data
     
 }
 @property CMMotionManager *motionManager;
+@property CLLocationManager *locationManager;
 @property NSOperationQueue *queue;
 @property NSTimer *timer;
 
 @property NSMutableArray *rawAccelGyroData;
+@property NSMutableArray *rawGPSData;
 
 @property BOOL interpolateAccel; // interpolate accelerometer data at gyro timestamps?
 @property NSString *timeStartImu;
+@property NSTimeInterval bootTimeReference; // Store boot time reference for GPS synchronization
+@property NSTimeInterval lastGPSUpdateTime; // Track GPS update frequency
+@property int gpsUpdateCount; // Count GPS updates
 
 @end
 
@@ -33,6 +39,14 @@ const double RATE = 100; // fps for inertial data
         _motionManager = [[CMMotionManager alloc] init];
         if (!_motionManager.isDeviceMotionAvailable) {
             NSLog(@"Device does not support motion capture."); }
+        
+        _locationManager = [[CLLocationManager alloc] init];
+        _locationManager.delegate = self;
+        _locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation; // Highest accuracy
+        _locationManager.distanceFilter = kCLDistanceFilterNone; // Update on every location change
+        _locationManager.pausesLocationUpdatesAutomatically = NO; // Don't pause updates automatically
+        _locationManager.allowsBackgroundLocationUpdates = YES; // Allow background updates
+        
         _fileURL = nil;
         _interpolateAccel = TRUE;
 
@@ -53,7 +67,62 @@ const double RATE = 100; // fps for inertial data
     return mutableArray;
 }
 
-- (NSMutableString*)interpolate:(NSMutableArray*) accelGyroData startTime:(NSString *) startTime {
+- (GPSNodeWrapper *)interpolateGPSDataAtTime:(NSTimeInterval)targetTime fromArray:(NSArray *)gpsArray currentIndex:(int *)currentIndex {
+    if (!gpsArray || [gpsArray count] == 0) {
+        return nil;
+    }
+    
+    GPSNodeWrapper *lowerGPS = nil;
+    GPSNodeWrapper *upperGPS = nil;
+    int lowerIndex = -1;
+    int upperIndex = -1;
+    
+    // Find the GPS data points surrounding the target time
+    for (int i = *currentIndex; i < [gpsArray count]; i++) {
+        GPSNodeWrapper *gps = [gpsArray objectAtIndex:i];
+        if (gps.time <= targetTime) {
+            lowerGPS = gps;
+            lowerIndex = i;
+            *currentIndex = i; // Update current index for efficiency
+        } else {
+            upperGPS = gps;
+            upperIndex = i;
+            break;
+        }
+    }
+    
+    // If we have exact match
+    if (lowerGPS && fabs(lowerGPS.time - targetTime) < 0.001) {
+        return lowerGPS;
+    }
+    
+    // If we have both lower and upper bounds, interpolate
+    if (lowerGPS && upperGPS && lowerIndex >= 0 && upperIndex >= 0) {
+        double ratio = (targetTime - lowerGPS.time) / (upperGPS.time - lowerGPS.time);
+        
+        GPSNodeWrapper *interpolatedGPS = [[GPSNodeWrapper alloc] init];
+        interpolatedGPS.time = targetTime;
+        interpolatedGPS.latitude = lowerGPS.latitude + (upperGPS.latitude - lowerGPS.latitude) * ratio;
+        interpolatedGPS.longitude = lowerGPS.longitude + (upperGPS.longitude - lowerGPS.longitude) * ratio;
+        interpolatedGPS.speed = lowerGPS.speed + (upperGPS.speed - lowerGPS.speed) * ratio;
+        
+        return interpolatedGPS;
+    }
+    
+    // If we only have lower bound, use it (extrapolation)
+    if (lowerGPS) {
+        return lowerGPS;
+    }
+    
+    // If we only have upper bound, use it (extrapolation)
+    if (upperGPS) {
+        return upperGPS;
+    }
+    
+    return nil;
+}
+
+- (NSMutableString*)interpolate:(NSMutableArray*) accelGyroData gpsData:(NSMutableArray*) gpsData startTime:(NSString *) startTime {
     
     NSMutableArray *gyroArray = [[NSMutableArray alloc] init];
     NSMutableArray *accelArray = [[NSMutableArray alloc] init];
@@ -74,17 +143,36 @@ const double RATE = 100; // fps for inertial data
     NSMutableArray *mutableGyroCopy = [self removeDuplicates:sortedArrayGyro];
     NSMutableArray *mutableAccelCopy = [self removeDuplicates:sortedArrayAccel];
     
+    // Sort GPS data by time
+    NSArray *sortedGPSArray = [gpsData sortedArrayUsingSelector:@selector(compare:)];
+    
+    NSLog(@"Interpolating data: %lu gyro samples, %lu accel samples, %lu GPS samples", 
+          (unsigned long)[mutableGyroCopy count], (unsigned long)[mutableAccelCopy count], (unsigned long)[sortedGPSArray count]);
+    
     // interpolate
     NSMutableString *mainString = [[NSMutableString alloc]initWithString:@""];
     int accelIndex = 0;
-    [mainString appendFormat:@"Timestamp[nanosec], gx[rad/s], gy[rad/s], gz[rad/s], ax[m/s^2], ay[m/s^2], az[m/s^2]\n"];
+    int gpsIndex = 0;
+    [mainString appendFormat:@"Timestamp[nanosec], gx[rad/s], gy[rad/s], gz[rad/s], ax[m/s^2], ay[m/s^2], az[m/s^2], latitude[deg], longitude[deg], speed[m/s]\n"];
     for (int gyroIndex = 0; gyroIndex < [mutableGyroCopy count]; ++gyroIndex) {
         NodeWrapper *nwg = [mutableGyroCopy objectAtIndex:gyroIndex];
         NodeWrapper *nwa = [mutableAccelCopy objectAtIndex:accelIndex];
+        
+        // Find GPS data for this timestamp with interpolation
+        GPSNodeWrapper *nwGPS = [self interpolateGPSDataAtTime:nwg.time fromArray:sortedGPSArray currentIndex:&gpsIndex];
+        
         if (nwg.time < nwa.time) {
             continue;
         } else if (nwg.time == nwa.time) {
-            [mainString appendFormat:@"%@, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n", secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, nwa.x, nwa.y, nwa.z];
+            if (nwGPS) {
+                [mainString appendFormat:@"%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n", 
+                 secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, nwa.x, nwa.y, nwa.z, 
+                 nwGPS.latitude, nwGPS.longitude, nwGPS.speed];
+            } else {
+                [mainString appendFormat:@"%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n", 
+                 secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, nwa.x, nwa.y, nwa.z, 
+                 0.0, 0.0, 0.0];
+            }
         } else {
             int lowerIndex = accelIndex;
             int upperIndex = accelIndex + 1;
@@ -107,7 +195,15 @@ const double RATE = 100; // fps for inertial data
             
             if (upperIndex == lowerIndex) {
                 NodeWrapper *nwa1 = [mutableAccelCopy objectAtIndex:upperIndex];
-                [mainString appendFormat:@"%@, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n", secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, nwa1.x, nwa1.y, nwa1.z];
+                if (nwGPS) {
+                    [mainString appendFormat:@"%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n", 
+                     secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, nwa1.x, nwa1.y, nwa1.z, 
+                     nwGPS.latitude, nwGPS.longitude, nwGPS.speed];
+                } else {
+                    [mainString appendFormat:@"%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n", 
+                     secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, nwa1.x, nwa1.y, nwa1.z, 
+                     0.0, 0.0, 0.0];
+                }
             } else if (upperIndex == lowerIndex + 1) {
                 NodeWrapper *nwa = [mutableAccelCopy objectAtIndex:lowerIndex];
                 NodeWrapper *nwa1 = [mutableAccelCopy objectAtIndex:upperIndex];
@@ -115,7 +211,15 @@ const double RATE = 100; // fps for inertial data
                 double interpax = nwa.x + (nwa1.x - nwa.x) * ratio;
                 double interpay = nwa.y + (nwa1.y - nwa.y) * ratio;
                 double interpaz = nwa.z + (nwa1.z - nwa.z) * ratio;
-                [mainString appendFormat:@"%@, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n", secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, interpax, interpay, interpaz];
+                if (nwGPS) {
+                    [mainString appendFormat:@"%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n", 
+                     secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, interpax, interpay, interpaz, 
+                     nwGPS.latitude, nwGPS.longitude, nwGPS.speed];
+                } else {
+                    [mainString appendFormat:@"%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n", 
+                     secDoubleToNanoString(nwg.time), nwg.x, nwg.y, nwg.z, interpax, interpay, interpaz, 
+                     0.0, 0.0, 0.0];
+                }
             } else {
                 NSLog(@"Impossible lower and upper bound %d %d for gyro timestamp %.5f", lowerIndex, upperIndex, nwg.time);
             }
@@ -134,6 +238,7 @@ const double RATE = 100; // fps for inertial data
         _isRecording = false;
         [_motionManager stopGyroUpdates];
         [_motionManager stopAccelerometerUpdates];
+        [_locationManager stopUpdatingLocation];
         
         NSMutableString *mainString = [[NSMutableString alloc]initWithString:@""];
         if (!_interpolateAccel) {
@@ -146,10 +251,12 @@ const double RATE = 100; // fps for inertial data
             // TODO(jhuai): Though offline interpolation is enough for practical needs,
             // eg., 20 min recording, online interpolation may be still desirable.
             // It can be implemented referring to Vins Mobile and MarsLogger Android.
-            mainString = [self interpolate:_rawAccelGyroData startTime:_timeStartImu];
+            mainString = [self interpolate:_rawAccelGyroData gpsData:_rawGPSData startTime:_timeStartImu];
         }
         if ([_rawAccelGyroData count])
             [_rawAccelGyroData removeAllObjects];
+        if ([_rawGPSData count])
+            [_rawGPSData removeAllObjects];
 
         NSData *settingsData;
         settingsData = [mainString dataUsingEncoding: NSUTF8StringEncoding allowLossyConversion:false];
@@ -166,8 +273,15 @@ const double RATE = 100; // fps for inertial data
         _isRecording = true;
         NSLog(@"Start recording inertial data!");
         _rawAccelGyroData = [[NSMutableArray alloc] init];
+        _rawGPSData = [[NSMutableArray alloc] init];
         _motionManager.gyroUpdateInterval = 1.0/RATE;
         _motionManager.accelerometerUpdateInterval = 1.0/RATE;
+        
+        // Store boot time reference for GPS synchronization
+        _bootTimeReference = [NSDate date].timeIntervalSince1970 - [NSProcessInfo processInfo].systemUptime;
+        _gpsUpdateCount = 0;
+        _lastGPSUpdateTime = 0;
+        NSLog(@"Boot time reference: %.6f", _bootTimeReference);
         
         NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
         [dateFormatter setDateFormat:@"EEE_MM_dd_yyyy_HH_mm_ss"];
@@ -203,7 +317,83 @@ const double RATE = 100; // fps for inertial data
         } else {
             NSLog(@"Gyroscope or accelerometer not available");
         }
+        
+        // Start GPS location updates with maximum frequency
+        if ([CLLocationManager locationServicesEnabled]) {
+            CLAuthorizationStatus status = [CLLocationManager authorizationStatus];
+            if (status == kCLAuthorizationStatusNotDetermined) {
+                [_locationManager requestWhenInUseAuthorization];
+            } else if (status == kCLAuthorizationStatusAuthorizedWhenInUse || status == kCLAuthorizationStatusAuthorizedAlways) {
+                // Request "Always" authorization for maximum update frequency
+                if (status == kCLAuthorizationStatusAuthorizedWhenInUse) {
+                    [_locationManager requestAlwaysAuthorization];
+                }
+                [_locationManager startUpdatingLocation];
+                NSLog(@"Started GPS location updates with maximum frequency settings");
+            } else {
+                NSLog(@"Location services not authorized");
+            }
+        } else {
+            NSLog(@"Location services not enabled");
+        }
     }
+}
+
+#pragma mark - CLLocationManagerDelegate
+
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations {
+    if (!_isRecording) return;
+    
+    CLLocation *location = [locations lastObject];
+    if (location && location.coordinate.latitude != 0 && location.coordinate.longitude != 0) {
+        GPSNodeWrapper *gpsNode = [[GPSNodeWrapper alloc] init];
+        // Use the same time reference as inertial data (time since device boot)
+        // Convert from absolute time to time since boot using stored reference
+        gpsNode.time = location.timestamp.timeIntervalSince1970 - _bootTimeReference;
+        gpsNode.latitude = location.coordinate.latitude;
+        gpsNode.longitude = location.coordinate.longitude;
+        gpsNode.speed = location.speed >= 0 ? location.speed : 0.0; // Handle negative speed values
+        
+        [_rawGPSData addObject:gpsNode];
+        _gpsUpdateCount++;
+        
+        // Log GPS update frequency every 10 updates
+        if (_gpsUpdateCount % 10 == 0) {
+            NSTimeInterval timeSinceLastUpdate = _lastGPSUpdateTime > 0 ? gpsNode.time - _lastGPSUpdateTime : 0;
+            double gpsFrequency = _lastGPSUpdateTime > 0 ? 1.0 / timeSinceLastUpdate : 0;
+            NSLog(@"GPS Update #%d: lat=%.15f, lon=%.15f, speed=%.15f, time=%.6f, freq=%.1f Hz", 
+                  _gpsUpdateCount, gpsNode.latitude, gpsNode.longitude, gpsNode.speed, gpsNode.time, gpsFrequency);
+        } else {
+            NSLog(@"GPS: lat=%.15f, lon=%.15f, speed=%.15f, time=%.6f", gpsNode.latitude, gpsNode.longitude, gpsNode.speed, gpsNode.time);
+        }
+        
+        _lastGPSUpdateTime = gpsNode.time;
+    }
+}
+
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
+    switch (status) {
+        case kCLAuthorizationStatusAuthorizedWhenInUse:
+        case kCLAuthorizationStatusAuthorizedAlways:
+            if (_isRecording) {
+                [_locationManager startUpdatingLocation];
+                NSLog(@"GPS authorization granted, starting location updates");
+            }
+            break;
+        case kCLAuthorizationStatusDenied:
+        case kCLAuthorizationStatusRestricted:
+            NSLog(@"GPS location access denied or restricted");
+            break;
+        case kCLAuthorizationStatusNotDetermined:
+            NSLog(@"GPS location authorization not determined");
+            break;
+        default:
+            break;
+    }
+}
+
+- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error {
+    NSLog(@"GPS location manager failed with error: %@", error.localizedDescription);
 }
 
 @end
@@ -211,6 +401,12 @@ const double RATE = 100; // fps for inertial data
 
 @implementation NodeWrapper
 - (NSComparisonResult)compare:(NodeWrapper *)otherObject {
+    return [@(self.time) compare:@(otherObject.time)]; // @ converts double to NSNumber
+}
+@end
+
+@implementation GPSNodeWrapper
+- (NSComparisonResult)compare:(GPSNodeWrapper *)otherObject {
     return [@(self.time) compare:@(otherObject.time)]; // @ converts double to NSNumber
 }
 @end
