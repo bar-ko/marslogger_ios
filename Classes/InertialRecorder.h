@@ -9,8 +9,9 @@
 
 
 #import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
 
-@interface InertialRecorder : NSObject
+@interface InertialRecorder : NSObject <CLLocationManagerDelegate>
 
 - (void)switchRecording;
 
@@ -28,6 +29,16 @@
 @property BOOL isGyro;
 
 - (NSComparisonResult)compare:(NodeWrapper *)otherObject;
+
+@end
+
+@interface GPSNodeWrapper : NSObject
+@property NSTimeInterval time;
+@property double latitude;
+@property double longitude;
+@property double speed;
+
+- (NSComparisonResult)compare:(GPSNodeWrapper *)otherObject;
 
 @end
 

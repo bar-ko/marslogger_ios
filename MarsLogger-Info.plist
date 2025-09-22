@@ -34,6 +34,14 @@
 	<string>Save Video to the Photos Album</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string></string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires your location to log GPS data for synchronized video and motion analysis.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app requires your location to log GPS data for synchronized video and motion analysis.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
