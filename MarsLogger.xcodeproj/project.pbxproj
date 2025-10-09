@@ -105,6 +105,15 @@
 		6FF11C9516A877B100E14D71 /* matrix.c in Sources */ = {isa = PBXBuildFile; fileRef = 6FF11C9116A877B100E14D71 /* matrix.c */; };
 		6FF11C9616A877B100E14D71 /* ShaderUtilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 6FF11C9316A877B100E14D71 /* ShaderUtilities.c */; };
 		7214DBCE182AEF8900EA3F99 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7214DBCD182AEF8900EA3F99 /* Images.xcassets */; };
+		953940702E980A8000EB3E20 /* RosyWriterCapturePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539406B2E980A8000EB3E20 /* RosyWriterCapturePipeline.swift */; };
+		953940712E980A8000EB3E20 /* InertialRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539406C2E980A8000EB3E20 /* InertialRecorder.swift */; };
+		953940722E980A8000EB3E20 /* RosyWriterProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539406D2E980A8000EB3E20 /* RosyWriterProtocols.swift */; };
+		953940732E980A8000EB3E20 /* RosyWriterAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539406E2E980A8000EB3E20 /* RosyWriterAppDelegate.swift */; };
+		953940742E980A8000EB3E20 /* RosyWriterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539406F2E980A8000EB3E20 /* RosyWriterViewController.swift */; };
+		953940792E980AB800EB3E20 /* MovieRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940752E980AB800EB3E20 /* MovieRecorder.swift */; };
+		9539407A2E980AB800EB3E20 /* VideoTimeConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940762E980AB800EB3E20 /* VideoTimeConverter.swift */; };
+		9539407B2E980AB800EB3E20 /* OpenGLPixelBufferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */; };
+		9539407C2E980AB800EB3E20 /* CameraControlFunctions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940782E980AB800EB3E20 /* CameraControlFunctions.swift */; };
 		F318DFE920E738C000260914 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318DFE820E738C000260914 /* Photos.framework */; };
 		F318E01320E78D2800260914 /* InertialRecorder.m in Sources */ = {isa = PBXBuildFile; fileRef = F318E01120E78D2700260914 /* InertialRecorder.m */; };
 		F318E01420E79AE300260914 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
@@ -201,6 +210,27 @@
 		6FF11C9316A877B100E14D71 /* ShaderUtilities.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = ShaderUtilities.c; path = Utilities/GL/ShaderUtilities.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		6FF11C9416A877B100E14D71 /* ShaderUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; name = ShaderUtilities.h; path = Utilities/GL/ShaderUtilities.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		7214DBCD182AEF8900EA3F99 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Resources/Images.xcassets; sourceTree = SOURCE_ROOT; };
+		953940532E98026300EB3E20 /* RosyWriterAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterAppDelegate.swift; path = Classes/RosyWriterAppDelegate.swift; sourceTree = "<group>"; };
+		953940542E98026300EB3E20 /* InertialRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InertialRecorder.swift; path = Classes/InertialRecorder.swift; sourceTree = "<group>"; };
+		953940552E98026300EB3E20 /* RosyWriterProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterProtocols.swift; path = Classes/RosyWriterProtocols.swift; sourceTree = "<group>"; };
+		953940562E98026400EB3E20 /* RosyWriterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterViewController.swift; path = Classes/RosyWriterViewController.swift; sourceTree = "<group>"; };
+		953940572E98026400EB3E20 /* RosyWriterCapturePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterCapturePipeline.swift; path = Classes/RosyWriterCapturePipeline.swift; sourceTree = "<group>"; };
+		9539405D2E98070E00EB3E20 /* InertialRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InertialRecorder.swift; path = Classes/InertialRecorder.swift; sourceTree = "<group>"; };
+		9539405E2E98070E00EB3E20 /* RosyWriterAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterAppDelegate.swift; path = Classes/RosyWriterAppDelegate.swift; sourceTree = "<group>"; };
+		9539405F2E98070E00EB3E20 /* RosyWriterProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterProtocols.swift; path = Classes/RosyWriterProtocols.swift; sourceTree = "<group>"; };
+		953940602E98070E00EB3E20 /* RosyWriterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterViewController.swift; path = Classes/RosyWriterViewController.swift; sourceTree = "<group>"; };
+		953940612E98070E00EB3E20 /* RosyWriterCapturePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterCapturePipeline.swift; path = Classes/RosyWriterCapturePipeline.swift; sourceTree = "<group>"; };
+		953940672E98073300EB3E20 /* CameraControlFunctions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CameraControlFunctions.swift; path = Classes/Utilities/CameraControlFunctions.swift; sourceTree = "<group>"; };
+		953940682E98073400EB3E20 /* VideoTimeConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoTimeConverter.swift; path = Classes/Utilities/VideoTimeConverter.swift; sourceTree = "<group>"; };
+		9539406B2E980A8000EB3E20 /* RosyWriterCapturePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterCapturePipeline.swift; path = Classes/RosyWriterCapturePipeline.swift; sourceTree = "<group>"; };
+		9539406C2E980A8000EB3E20 /* InertialRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InertialRecorder.swift; path = Classes/InertialRecorder.swift; sourceTree = "<group>"; };
+		9539406D2E980A8000EB3E20 /* RosyWriterProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterProtocols.swift; path = Classes/RosyWriterProtocols.swift; sourceTree = "<group>"; };
+		9539406E2E980A8000EB3E20 /* RosyWriterAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterAppDelegate.swift; path = Classes/RosyWriterAppDelegate.swift; sourceTree = "<group>"; };
+		9539406F2E980A8000EB3E20 /* RosyWriterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RosyWriterViewController.swift; path = Classes/RosyWriterViewController.swift; sourceTree = "<group>"; };
+		953940752E980AB800EB3E20 /* MovieRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MovieRecorder.swift; path = Classes/Utilities/MovieRecorder.swift; sourceTree = "<group>"; };
+		953940762E980AB800EB3E20 /* VideoTimeConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoTimeConverter.swift; path = Classes/Utilities/VideoTimeConverter.swift; sourceTree = "<group>"; };
+		953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenGLPixelBufferView.swift; path = Classes/Utilities/OpenGLPixelBufferView.swift; sourceTree = "<group>"; };
+		953940782E980AB800EB3E20 /* CameraControlFunctions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CameraControlFunctions.swift; path = Classes/Utilities/CameraControlFunctions.swift; sourceTree = "<group>"; };
 		F318DFE820E738C000260914 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
 		F318E01120E78D2700260914 /* InertialRecorder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InertialRecorder.m; sourceTree = "<group>"; };
 		F318E01220E78D2800260914 /* InertialRecorder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InertialRecorder.h; sourceTree = "<group>"; };
@@ -345,6 +375,27 @@
 		6F90DDCA1395CAAA00125BDA = {
 			isa = PBXGroup;
 			children = (
+				953940782E980AB800EB3E20 /* CameraControlFunctions.swift */,
+				953940752E980AB800EB3E20 /* MovieRecorder.swift */,
+				953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */,
+				953940762E980AB800EB3E20 /* VideoTimeConverter.swift */,
+				9539406C2E980A8000EB3E20 /* InertialRecorder.swift */,
+				9539406E2E980A8000EB3E20 /* RosyWriterAppDelegate.swift */,
+				9539406B2E980A8000EB3E20 /* RosyWriterCapturePipeline.swift */,
+				9539406D2E980A8000EB3E20 /* RosyWriterProtocols.swift */,
+				9539406F2E980A8000EB3E20 /* RosyWriterViewController.swift */,
+				953940672E98073300EB3E20 /* CameraControlFunctions.swift */,
+				953940682E98073400EB3E20 /* VideoTimeConverter.swift */,
+				953940542E98026300EB3E20 /* InertialRecorder.swift */,
+				953940532E98026300EB3E20 /* RosyWriterAppDelegate.swift */,
+				953940572E98026400EB3E20 /* RosyWriterCapturePipeline.swift */,
+				953940612E98070E00EB3E20 /* RosyWriterCapturePipeline.swift */,
+				953940552E98026300EB3E20 /* RosyWriterProtocols.swift */,
+				953940562E98026400EB3E20 /* RosyWriterViewController.swift */,
+				9539405D2E98070E00EB3E20 /* InertialRecorder.swift */,
+				9539405E2E98070E00EB3E20 /* RosyWriterAppDelegate.swift */,
+				9539405F2E98070E00EB3E20 /* RosyWriterProtocols.swift */,
+				953940602E98070E00EB3E20 /* RosyWriterViewController.swift */,
 				28365598139FE71B00D09100 /* ReadMe.txt */,
 				6F90DDDF1395CAAA00125BDA /* Classes */,
 				6FF11C8616A8778500E14D71 /* Utilities */,
@@ -739,6 +790,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				953940792E980AB800EB3E20 /* MovieRecorder.swift in Sources */,
+				9539407A2E980AB800EB3E20 /* VideoTimeConverter.swift in Sources */,
+				9539407B2E980AB800EB3E20 /* OpenGLPixelBufferView.swift in Sources */,
+				9539407C2E980AB800EB3E20 /* CameraControlFunctions.swift in Sources */,
+				953940702E980A8000EB3E20 /* RosyWriterCapturePipeline.swift in Sources */,
+				953940712E980A8000EB3E20 /* InertialRecorder.swift in Sources */,
+				953940722E980A8000EB3E20 /* RosyWriterProtocols.swift in Sources */,
+				953940732E980A8000EB3E20 /* RosyWriterAppDelegate.swift in Sources */,
+				953940742E980A8000EB3E20 /* RosyWriterViewController.swift in Sources */,
 				F36A3A7D20D7F18600AA1C57 /* RosyWriterViewController+Helper.m in Sources */,
 				6F90DDE61395CAAA00125BDA /* main.m in Sources */,
 				6F90DDEA1395CAAA00125BDA /* RosyWriterAppDelegate.m in Sources */,
