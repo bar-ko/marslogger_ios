@@ -56,6 +56,10 @@ const double RATE = 100; // fps for inertial data
 
 - (NSMutableArray *) removeDuplicates:(NSArray *)array {
     // see https://stackoverflow.com/questions/1025674/the-best-way-to-remove-duplicate-values-from-nsmutablearray-in-objective-c
+    if (!array || [array count] == 0) {
+        return [NSMutableArray array];
+    }
+    
     NSMutableArray *mutableArray = [array mutableCopy];
     NSInteger index = [array count] - 1;
     for (id object in [array reverseObjectEnumerator]) {
@@ -93,12 +97,18 @@ const double RATE = 100; // fps for inertial data
     
     // If we have exact match
     if (lowerGPS && fabs(lowerGPS.time - targetTime) < 0.001) {
+        // Return the existing object, no need to create a new one
         return lowerGPS;
     }
     
     // If we have both lower and upper bounds, interpolate
     if (lowerGPS && upperGPS && lowerIndex >= 0 && upperIndex >= 0) {
-        double ratio = (targetTime - lowerGPS.time) / (upperGPS.time - lowerGPS.time);
+        // Prevent division by zero
+        double timeDiff = upperGPS.time - lowerGPS.time;
+        if (fabs(timeDiff) < 0.000001) { // Small epsilon to check for near-zero values
+            return lowerGPS; // Return lower bound if times are too close
+        }
+        double ratio = (targetTime - lowerGPS.time) / timeDiff;
         
         GPSNodeWrapper *interpolatedGPS = [[GPSNodeWrapper alloc] init];
         interpolatedGPS.time = targetTime;
@@ -154,8 +164,19 @@ const double RATE = 100; // fps for inertial data
     int accelIndex = 0;
     int gpsIndex = 0;
     [mainString appendFormat:@"Timestamp[nanosec], gx[rad/s], gy[rad/s], gz[rad/s], ax[m/s^2], ay[m/s^2], az[m/s^2], latitude[deg], longitude[deg], speed[m/s]\n"];
+    // Check if arrays are empty to avoid out of bounds access
+    if ([mutableGyroCopy count] == 0 || [mutableAccelCopy count] == 0) {
+        return mainString;
+    }
+    
     for (int gyroIndex = 0; gyroIndex < [mutableGyroCopy count]; ++gyroIndex) {
         NodeWrapper *nwg = [mutableGyroCopy objectAtIndex:gyroIndex];
+        
+        // Make sure accelIndex is within bounds
+        if (accelIndex >= [mutableAccelCopy count]) {
+            break;
+        }
+        
         NodeWrapper *nwa = [mutableAccelCopy objectAtIndex:accelIndex];
         
         // Find GPS data for this timestamp with interpolation
@@ -190,8 +211,10 @@ const double RATE = 100; // fps for inertial data
                 }
             }
             
-            if (upperIndex >= [mutableAccelCopy count])
+            // Make sure upperIndex is valid
+            if (upperIndex >= [mutableAccelCopy count]) {
                 break;
+            }
             
             if (upperIndex == lowerIndex) {
                 NodeWrapper *nwa1 = [mutableAccelCopy objectAtIndex:upperIndex];
@@ -205,9 +228,20 @@ const double RATE = 100; // fps for inertial data
                      0.0, 0.0, 0.0];
                 }
             } else if (upperIndex == lowerIndex + 1) {
+                // Make sure both indices are valid
+                if (lowerIndex < 0 || lowerIndex >= [mutableAccelCopy count] || 
+                    upperIndex < 0 || upperIndex >= [mutableAccelCopy count]) {
+                    break;
+                }
+                
                 NodeWrapper *nwa = [mutableAccelCopy objectAtIndex:lowerIndex];
                 NodeWrapper *nwa1 = [mutableAccelCopy objectAtIndex:upperIndex];
-                double ratio = (nwg.time - nwa.time) / (nwa1.time - nwa.time);
+                // Prevent division by zero
+                double timeDiff = nwa1.time - nwa.time;
+                if (fabs(timeDiff) < 0.000001) { // Small epsilon to check for near-zero values
+                    continue;
+                }
+                double ratio = (nwg.time - nwa.time) / timeDiff;
                 double interpax = nwa.x + (nwa1.x - nwa.x) * ratio;
                 double interpay = nwa.y + (nwa1.y - nwa.y) * ratio;
                 double interpaz = nwa.z + (nwa1.z - nwa.z) * ratio;
@@ -226,10 +260,8 @@ const double RATE = 100; // fps for inertial data
             accelIndex = lowerIndex;
         }
     }
-    if ([gyroArray count])
-        [gyroArray removeAllObjects];
-    if ([accelArray count])
-        [accelArray removeAllObjects];
+    // Local arrays will be automatically deallocated when the method exits
+    // No need to call removeAllObjects
     return mainString;
 }
 
@@ -253,10 +285,9 @@ const double RATE = 100; // fps for inertial data
             // It can be implemented referring to Vins Mobile and MarsLogger Android.
             mainString = [self interpolate:_rawAccelGyroData gpsData:_rawGPSData startTime:_timeStartImu];
         }
-        if ([_rawAccelGyroData count])
-            [_rawAccelGyroData removeAllObjects];
-        if ([_rawGPSData count])
-            [_rawGPSData removeAllObjects];
+        // Set arrays to nil to properly release them
+        _rawAccelGyroData = nil;
+        _rawGPSData = nil;
 
         NSData *settingsData;
         settingsData = [mainString dataUsingEncoding: NSUTF8StringEncoding allowLossyConversion:false];
