@@ -85,6 +85,7 @@
 		9539407A2E980AB800EB3E20 /* VideoTimeConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940762E980AB800EB3E20 /* VideoTimeConverter.swift */; };
 		9539407B2E980AB800EB3E20 /* OpenGLPixelBufferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */; };
 		9539407C2E980AB800EB3E20 /* CameraControlFunctions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940782E980AB800EB3E20 /* CameraControlFunctions.swift */; };
+		9539407E2E99068C00EB3E20 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539407D2E99068C00EB3E20 /* main.swift */; };
 		F318DFE920E738C000260914 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318DFE820E738C000260914 /* Photos.framework */; };
 		F318E01420E79AE300260914 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
 		F318E01420E79AE300260915 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C1156CB42100512475 /* CoreLocation.framework */; };
@@ -173,6 +174,7 @@
 		953940762E980AB800EB3E20 /* VideoTimeConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VideoTimeConverter.swift; path = Classes/Utilities/VideoTimeConverter.swift; sourceTree = "<group>"; };
 		953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenGLPixelBufferView.swift; path = Classes/Utilities/OpenGLPixelBufferView.swift; sourceTree = "<group>"; };
 		953940782E980AB800EB3E20 /* CameraControlFunctions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CameraControlFunctions.swift; path = Classes/Utilities/CameraControlFunctions.swift; sourceTree = "<group>"; };
+		9539407D2E99068C00EB3E20 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		F318DFE820E738C000260914 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
 		F318E01520E79B5E00260914 /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MessageUI.framework; path = System/Library/Frameworks/MessageUI.framework; sourceTree = SDKROOT; };
 		F3A7D425235C141E001EE9C3 /* CameraControlFunctions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CameraControlFunctions.h; path = Utilities/CameraControlFunctions.h; sourceTree = "<group>"; };
@@ -304,6 +306,7 @@
 		6F90DDCA1395CAAA00125BDA = {
 			isa = PBXGroup;
 			children = (
+				9539407D2E99068C00EB3E20 /* main.swift */,
 				953940782E980AB800EB3E20 /* CameraControlFunctions.swift */,
 				953940752E980AB800EB3E20 /* MovieRecorder.swift */,
 				953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */,
@@ -679,6 +682,7 @@
 			files = (
 				953940792E980AB800EB3E20 /* MovieRecorder.swift in Sources */,
 				9539407A2E980AB800EB3E20 /* VideoTimeConverter.swift in Sources */,
+				9539407E2E99068C00EB3E20 /* main.swift in Sources */,
 				9539407B2E980AB800EB3E20 /* OpenGLPixelBufferView.swift in Sources */,
 				9539407C2E980AB800EB3E20 /* CameraControlFunctions.swift in Sources */,
 				953940702E980A8000EB3E20 /* RosyWriterCapturePipeline.swift in Sources */,

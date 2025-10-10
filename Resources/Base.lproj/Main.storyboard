@@ -12,7 +12,7 @@
         <!--Rosy Writer View Controller-->
         <scene sceneID="oFs-Qv-g6U">
             <objects>
-                <viewController id="t7Y-jQ-554" customClass="RosyWriterViewController" sceneMemberID="viewController">
+                <viewController id="t7Y-jQ-554" customClass="RosyWriterViewController" customModule="MarsLogger" customModuleProvider="target" sceneMemberID="viewController">
                     <layoutGuides>
                         <viewControllerLayoutGuide type="top" id="Vt3-Kp-k8r"/>
                         <viewControllerLayoutGuide type="bottom" id="xMO-Vz-sE9"/>
