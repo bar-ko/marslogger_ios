@@ -484,7 +484,7 @@ extension RosyWriterViewController {
         } else {
             for port in ports {
                 if port.mediaType == .video {
-                    let cleanAperture = CMVideoFormatDescriptionGetCleanAperture(port.formatDescription!, true)
+                    let cleanAperture = CMVideoFormatDescriptionGetCleanAperture(port.formatDescription!, originIsAtTopLeft: true)
                     let apertureSize = cleanAperture.size
                     let point = viewCoordinates
                     

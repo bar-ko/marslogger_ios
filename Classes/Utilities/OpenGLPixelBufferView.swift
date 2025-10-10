@@ -160,8 +160,8 @@ class OpenGLPixelBufferView: UIView {
         // Set texture parameters
         glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_MIN_FILTER), GL_LINEAR)
         glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_MAG_FILTER), GL_LINEAR)
-        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_WRAP_S), GLenum(GL_CLAMP_TO_EDGE))
-        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_WRAP_T), GLenum(GL_CLAMP_TO_EDGE))
+        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_WRAP_S), GLint(GLenum(GL_CLAMP_TO_EDGE)))
+        glTexParameteri(GLenum(GL_TEXTURE_2D), GLenum(GL_TEXTURE_WRAP_T), GLint(GLenum(GL_CLAMP_TO_EDGE)))
 
         // Set vertex attributes
         glVertexAttribPointer(ATTRIB_VERTEX, 2, GLenum(GL_FLOAT), GLboolean(GL_FALSE), 0, squareVertices)
@@ -189,10 +189,10 @@ class OpenGLPixelBufferView: UIView {
         // Create texture coordinates with vertical flip
         // CVPixelBuffers have top-left origin, OpenGL has bottom-left origin
         let passThroughTextureVertices: [GLfloat] = [
-            (1.0 - textureSamplingSize.width) / 2.0, (1.0 + textureSamplingSize.height) / 2.0, // top left
-            (1.0 + textureSamplingSize.width) / 2.0, (1.0 + textureSamplingSize.height) / 2.0, // top right
-            (1.0 - textureSamplingSize.width) / 2.0, (1.0 - textureSamplingSize.height) / 2.0, // bottom left
-            (1.0 + textureSamplingSize.width) / 2.0, (1.0 - textureSamplingSize.height) / 2.0  // bottom right
+            (1.0 - GLfloat(textureSamplingSize.width)) / 2.0, (1.0 + GLfloat(textureSamplingSize.height)) / 2.0, // top left
+            (1.0 + GLfloat(textureSamplingSize.width)) / 2.0, (1.0 + GLfloat(textureSamplingSize.height)) / 2.0, // top right
+            (1.0 - GLfloat(textureSamplingSize.width)) / 2.0, (1.0 - GLfloat(textureSamplingSize.height)) / 2.0, // bottom left
+            (1.0 + GLfloat(textureSamplingSize.width)) / 2.0, (1.0 - GLfloat(textureSamplingSize.height)) / 2.0  // bottom right
         ]
 
         glVertexAttribPointer(ATTRIB_TEXTUREPOSITON, 2, GLenum(GL_FLOAT), GLboolean(GL_FALSE), 0, passThroughTextureVertices)
@@ -206,7 +206,7 @@ class OpenGLPixelBufferView: UIView {
         glBindTexture(CVOpenGLESTextureGetTarget(texture), 0)
         glBindTexture(GLenum(GL_TEXTURE_2D), 0)
 
-        texture.release()
+        // CVOpenGLESTexture is automatically managed by ARC in Swift
 
         if oldContext !== oglContext {
             EAGLContext.setCurrent(oldContext)
@@ -243,7 +243,7 @@ class OpenGLPixelBufferView: UIView {
         }
 
         if textureCache != nil {
-            textureCache?.release()
+            // CVOpenGLESTextureCache is automatically managed by ARC in Swift
             textureCache = nil
         }
 
@@ -294,15 +294,17 @@ class OpenGLPixelBufferView: UIView {
             ("texturecoordinate" as NSString).utf8String
         ]
 
-        let status = glueCreateProgram(
-            kPassThruVertex,
-            kPassThruFragment,
-            GLsizei(NUM_ATTRIBUTES),
-            &attribNames,
-            attribLocations,
-            0, nil, nil, // no uniforms
-            &program
-        )
+        let status = attribNames.withUnsafeBufferPointer { attribNamesBuffer in
+            glueCreateProgram(
+                kPassThruVertex,
+                kPassThruFragment,
+                GLsizei(NUM_ATTRIBUTES),
+                attribNamesBuffer.baseAddress,
+                attribLocations,
+                0, nil, nil, // no uniforms
+                &program
+            )
+        }
 
         guard status != 0, program != 0 else {
             print("Error creating the program")
@@ -318,11 +320,11 @@ class OpenGLPixelBufferView: UIView {
 
 // MARK: - Shader Utilities
 
-private func glueCompileShader(_ target: GLenum, _ count: GLsizei, _ sources: UnsafePointer<UnsafePointer<GLchar>?>, _ shader: UnsafeMutablePointer<GLuint>) -> GLint {
+private func glueCompileShader(_ target: GLenum, _ count: GLsizei, _ sources: UnsafePointer<UnsafePointer<GLchar>>, _ shader: UnsafeMutablePointer<GLuint>) -> GLint {
     var status: GLint = 0
 
     shader.pointee = glCreateShader(target)
-    glShaderSource(shader.pointee, count, sources, nil)
+    glShaderSource(shader.pointee, count, unsafeBitCast(sources, to: UnsafePointer<UnsafePointer<GLchar>?>?.self), nil)
     glCompileShader(shader.pointee)
 
     #if DEBUG
@@ -397,7 +399,7 @@ private func glueGetUniformLocation(_ program: GLuint, _ uniformName: UnsafePoin
 }
 
 private func glueCreateProgram(_ vertSource: String, _ fragSource: String,
-                              _ attribNameCt: GLsizei, _ attribNames: UnsafePointer<UnsafePointer<GLchar>?>,
+                              _ attribNameCt: GLsizei, _ attribNames: UnsafePointer<UnsafePointer<GLchar>?>?,
                               _ attribLocations: [GLint],
                               _ uniformNameCt: GLsizei, _ uniformNames: UnsafePointer<UnsafePointer<GLchar>?>?,
                               _ uniformLocations: UnsafeMutablePointer<GLint>?,
@@ -414,13 +416,17 @@ private func glueCreateProgram(_ vertSource: String, _ fragSource: String,
     // Create and compile vertex shader
     vertSource.withCString { vertPtr in
         var sources = [vertPtr]
-        status *= glueCompileShader(GLenum(GL_VERTEX_SHADER), 1, &sources, &vertShader)
+        sources.withUnsafeBufferPointer { sourcesBuffer in
+            status *= glueCompileShader(GLenum(GL_VERTEX_SHADER), 1, sourcesBuffer.baseAddress!, &vertShader)
+        }
     }
 
     // Create and compile fragment shader
     fragSource.withCString { fragPtr in
         var sources = [fragPtr]
-        status *= glueCompileShader(GLenum(GL_FRAGMENT_SHADER), 1, &sources, &fragShader)
+        sources.withUnsafeBufferPointer { sourcesBuffer in
+            status *= glueCompileShader(GLenum(GL_FRAGMENT_SHADER), 1, sourcesBuffer.baseAddress!, &fragShader)
+        }
     }
 
     // Attach shaders
@@ -428,9 +434,12 @@ private func glueCreateProgram(_ vertSource: String, _ fragSource: String,
     glAttachShader(prog, fragShader)
 
     // Bind attribute locations
-    for i in 0..<Int(attribNameCt) {
-        if let name = attribNames[i], strlen(name) > 0 {
-            glBindAttribLocation(prog, GLuint(attribLocations[i]), name)
+    if let attribNames = attribNames {
+        for i in 0..<Int(attribNameCt) {
+            let namePtr = attribNames[i]
+            if let name = namePtr, strlen(name) > 0 {
+                glBindAttribLocation(prog, GLuint(attribLocations[i]), name)
+            }
         }
     }
 
@@ -439,9 +448,12 @@ private func glueCreateProgram(_ vertSource: String, _ fragSource: String,
 
     // Get uniform locations
     if status != 0 {
-        for i in 0..<Int(uniformNameCt) {
-            if let name = uniformNames?[i], strlen(name) > 0 {
-                uniformLocations?[i] = glueGetUniformLocation(prog, name)
+        if let uniformNames = uniformNames, let uniformLocations = uniformLocations {
+            for i in 0..<Int(uniformNameCt) {
+                let namePtr = uniformNames[i]
+                if let name = namePtr, strlen(name) > 0 {
+                    uniformLocations[i] = glueGetUniformLocation(prog, name)
+                }
             }
         }
         program.pointee = prog
