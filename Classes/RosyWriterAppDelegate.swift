@@ -6,10 +6,10 @@
  Application delegate for MarsLogger iOS app
  */
 
-import UIKit
-import CoreLocation
 import AVFoundation
+import CoreLocation
 import Photos
+import UIKit
 
 class RosyWriterAppDelegate: UIResponder, UIApplicationDelegate {
 
@@ -18,23 +18,11 @@ class RosyWriterAppDelegate: UIResponder, UIApplicationDelegate {
     // Location manager for background location updates
     private var locationManager: CLLocationManager?
 
-private func clearScenePersistence() {
-    let fileManager = FileManager.default
-    if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-        let sceneSessionDir = appSupport.appendingPathComponent("com.apple.uikit/sceneSession")
-        if fileManager.fileExists(atPath: sceneSessionDir.path) {
-            do {
-                try fileManager.removeItem(at: sceneSessionDir)
-                print("🧹 Cleared corrupted sceneSession data at \(sceneSessionDir.path)")
-            } catch {
-                print("⚠️ Failed to clear sceneSession data: \(error)")
-            }
-        }
-    }
-}
-
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    clearScenePersistence()
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication
+            .LaunchOptionsKey: Any]?
+    ) -> Bool {
         // Configure the application
         setupAppearance()
         setupLocationManager()
@@ -81,7 +69,11 @@ private func clearScenePersistence() {
 
     // MARK: - Background Location
 
-    func application(_ application: UIApplication, didChangeStatusBarOrientation oldStatusBarOrientation: UIInterfaceOrientation) {
+    func application(
+        _ application: UIApplication,
+        didChangeStatusBarOrientation oldStatusBarOrientation:
+            UIInterfaceOrientation
+    ) {
         // Called when the status bar orientation changes
         print("Status bar orientation changed")
     }
@@ -116,8 +108,73 @@ private func clearScenePersistence() {
 
         // Check photo library permission (iOS 14+)
         if #available(iOS 14, *) {
-            let photoStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-            print("Photo library permission status: \(photoStatus.rawValue)")
+            let status = PHPhotoLibrary.authorizationStatus()
+            print("Photo library permission status: \(status.rawValue)")
+            if status != .authorized {
+                PHPhotoLibrary.requestAuthorization { status in
+                    if status != .authorized {
+                        let accessDescription =
+                            Bundle.main.object(
+                                forInfoDictionaryKey:
+                                    "NSPhotoLibraryUsageDescription"
+                            ) as? String ?? ""
+
+                        let alertController = UIAlertController(
+                            title: accessDescription,
+                            message:
+                                "To give permissions tap on 'Change Settings' button",
+                            preferredStyle: .alert
+                        )
+
+                        alertController.addAction(
+                            UIAlertAction(
+                                title: "Cancel",
+                                style: .cancel,
+                                handler: nil
+                            )
+                        )
+
+                        alertController.addAction(
+                            UIAlertAction(
+                                title: "Change Settings",
+                                style: .default
+                            ) { _ in
+                                if let url = URL(
+                                    string: UIApplication.openSettingsURLString
+                                ) {
+                                    UIApplication.shared.open(
+                                        url,
+                                        options: [:],
+                                        completionHandler: nil
+                                    )
+                                }
+                            }
+                        )
+
+                        // Get the top view controller to present alert
+                        DispatchQueue.main.async {
+                            if #available(iOS 13.0, *) {
+                                let windowScene =
+                                    UIApplication.shared.connectedScenes.first
+                                    as? UIWindowScene
+                                windowScene?.windows.first?.rootViewController?
+                                    .present(
+                                        alertController,
+                                        animated: true,
+                                        completion: nil
+                                    )
+                            } else {
+                                UIApplication.shared.keyWindow?
+                                    .rootViewController?.present(
+                                        alertController,
+                                        animated: true,
+                                        completion: nil
+                                    )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -126,7 +183,10 @@ private func clearScenePersistence() {
 
 extension RosyWriterAppDelegate: CLLocationManagerDelegate {
 
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+    func locationManager(
+        _ manager: CLLocationManager,
+        didChangeAuthorization status: CLAuthorizationStatus
+    ) {
         print("Location authorization changed to: \(status.rawValue)")
 
         switch status {
@@ -145,13 +205,17 @@ extension RosyWriterAppDelegate: CLLocationManagerDelegate {
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    func locationManager(
+        _ manager: CLLocationManager,
+        didFailWithError error: Error
+    ) {
         print("Location manager failed: \(error.localizedDescription)")
     }
 
     private func showLocationPermissionAlert() {
         // This would typically be shown from the view controller, but we can prepare for it here
-        print("Location permission denied - user should be prompted to enable in settings")
+        print(
+            "Location permission denied - user should be prompted to enable in settings"
+        )
     }
 }
-
