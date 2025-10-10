@@ -8,8 +8,8 @@ let kSecToNanos: Int32 = 1000000000
 // MARK: - Global Functions
 
 func getAttachmentTime(_ mediaSample: CMSampleBuffer) -> CMTime {
-    let mediaTimeDict = CMGetAttachment(mediaSample, VIDEOSNAKE_REMAPPED_PTS, nil) as? NSDictionary
-    let mediaTime = mediaTimeDict != nil ? CMTimeMakeFromDictionary(mediaTimeDict! as CFDictionary)! : CMSampleBufferGetPresentationTimeStamp(mediaSample)
+    let mediaTimeDict = CMGetAttachment(mediaSample, key: VIDEOSNAKE_REMAPPED_PTS, attachmentModeOut: nil) as? NSDictionary
+    let mediaTime = mediaTimeDict != nil ? CMTimeMakeFromDictionary(mediaTimeDict! as CFDictionary) : CMSampleBufferGetPresentationTimeStamp(mediaSample)
     return mediaTime
 }
 

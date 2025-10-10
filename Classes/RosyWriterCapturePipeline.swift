@@ -17,7 +17,7 @@ import UIKit
 
 let RETAINED_BUFFER_COUNT = 6
 let RECORD_AUDIO = false
-let LOG_STATUS_TRANSITIONS = false
+private let LOG_CAPTURE_PIPELINE_STATUS_TRANSITIONS = false
 
 let VIDEO_META_FILENAME = "movie_metadata.csv"
 let IMU_OUTPUT_FILENAME = "gyro_accel.csv"
@@ -651,7 +651,7 @@ class RosyWriterCapturePipeline: NSObject {
         let oldStatus = recordingStatus
         recordingStatus = newStatus
         
-        if LOG_STATUS_TRANSITIONS {
+        if LOG_CAPTURE_PIPELINE_STATUS_TRANSITIONS {
             print("RosyWriterCapturePipeline recording state transition: \(oldStatus)->\(newStatus)")
         }
         

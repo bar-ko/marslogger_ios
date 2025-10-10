@@ -47,22 +47,24 @@ func getAssetPath(_ assetLocalIdentifier: String) -> String? {
     
     if let asset = asset {
         // get photo info from this asset
-        // for iOS 8
-        let imageRequestOptions = PHImageRequestOptions()
-        imageRequestOptions.isSynchronous = true
-        
-        // Warn: Because by default, requestImageDataForAsset method executes asynchronously, the following way to pass out path will not work.
-        PHImageManager.default().requestImageDataAndOrientation(for: asset, options: imageRequestOptions) { (imageData, dataUTI, orientation, info) in
-            if let info = info,
-               let fileURL = info["PHImageFileURLKey"] as? URL {
-                // path looks like this -
-                // file:///var/mobile/Media/DCIM/###APPLE/IMG_####.JPG
-                path = FileManager.default.displayName(atPath: fileURL.path)
-                print("PHImageFile path \(path ?? "")")
+        // for iOS 13+
+        if #available(iOS 13.0, *) {
+            let imageRequestOptions = PHImageRequestOptions()
+            imageRequestOptions.isSynchronous = true
+
+            // Warn: Because by default, requestImageDataForAsset method executes asynchronously, the following way to pass out path will not work.
+            PHImageManager.default().requestImageDataAndOrientation(for: asset, options: imageRequestOptions) { (imageData, dataUTI, orientation, info) in
+                if let info = info,
+                   let fileURL = info["PHImageFileURLKey"] as? URL {
+                    // path looks like this -
+                    // file:///var/mobile/Media/DCIM/###APPLE/IMG_####.JPG
+                    path = FileManager.default.displayName(atPath: fileURL.path)
+                    print("PHImageFile path \(path ?? "")")
+                }
             }
         }
-        
-        // for iOS 9+
+
+        // for iOS 9+ (fallback for older versions)
         // https://stackoverflow.com/questions/32687403/phasset-get-original-file-name/32706194
         // this path looks like "Movie.MP4"
         let resources = PHAssetResource.assetResources(for: asset)

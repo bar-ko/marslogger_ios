@@ -32,13 +32,7 @@ protocol RosyWriterRenderer: AnyObject {
 
 // MARK: - MovieRecorderDelegate Protocol
 
-protocol MovieRecorderDelegate: AnyObject {
-    func movieRecorderDidFinishPreparing(_ recorder: MovieRecorder)
-    func movieRecorder(_ recorder: MovieRecorder, didFailWithError error: Error)
-    func movieRecorderDidFinishRecording(_ recorder: MovieRecorder)
-}
-
-// MovieRecorder class is now in MovieRecorder.swift
+// MovieRecorderDelegate protocol is now defined in MovieRecorder.swift
 
 // MARK: - Stub Renderer Implementations
 

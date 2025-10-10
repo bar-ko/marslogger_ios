@@ -10,7 +10,7 @@ import Foundation
 import AVFoundation
 import CoreMedia
 
-let LOG_STATUS_TRANSITIONS = false
+let LOG_MOVIE_RECORDER_STATUS_TRANSITIONS = false
 
 // MARK: - MovieRecorderStatus Enum
 
@@ -78,13 +78,8 @@ class MovieRecorder: NSObject {
     }
 
     deinit {
-        if let audioTrackSourceFormatDescription = audioTrackSourceFormatDescription {
-            audioTrackSourceFormatDescription.release()
-        }
-
-        if let videoTrackSourceFormatDescription = videoTrackSourceFormatDescription {
-            videoTrackSourceFormatDescription.release()
-        }
+        // CMFormatDescription and CMSampleBuffer are automatically managed by ARC in Swift
+        // No manual retain/release needed
     }
 
     // MARK: - Public Methods
@@ -106,7 +101,7 @@ class MovieRecorder: NSObject {
             fatalError("Cannot add more than one video track")
         }
 
-        videoTrackSourceFormatDescription = formatDescription.retained()
+        videoTrackSourceFormatDescription = formatDescription
         videoTrackTransform = transform
         videoTrackSettings = videoSettings
     }
@@ -127,7 +122,7 @@ class MovieRecorder: NSObject {
             fatalError("Cannot add more than one audio track")
         }
 
-        audioTrackSourceFormatDescription = formatDescription.retained()
+        audioTrackSourceFormatDescription = formatDescription
         audioTrackSettings = audioSettings
     }
 
@@ -181,8 +176,8 @@ class MovieRecorder: NSObject {
                 // Start writing
                 if error == nil {
                     let success = self.assetWriter?.startWriting() ?? false
-                    if !success {
-                        error = self.assetWriter?.error as NSError
+                    if !success, let assetWriterError = self.assetWriter?.error {
+                        error = assetWriterError as NSError
                     }
                 }
 
@@ -224,7 +219,7 @@ class MovieRecorder: NSObject {
                              ofMediaType: .video,
                              withIntrinsicMat: intrinsic3x3,
                              withExposureDuration: exposureDuration)
-            sampleBuffer.release()
+            // CMSampleBuffer is automatically managed by ARC in Swift
         } else {
             fatalError("Sample buffer create failed (\(status))")
         }
@@ -314,12 +309,9 @@ class MovieRecorder: NSObject {
         }
         objc_sync_exit(self)
 
-        sampleBuffer.retain()
+        // CMSampleBuffer is automatically managed by ARC in Swift
         writingQueue.async { [weak self] in
-            guard let self = self else {
-                sampleBuffer.release()
-                return
-            }
+            guard let self = self else { return }
 
             autoreleasepool {
                 objc_sync_enter(self)
@@ -327,7 +319,6 @@ class MovieRecorder: NSObject {
 
                 // Check if we should still be recording
                 guard self.status.rawValue <= MovieRecorderStatus.finishingRecordingPart1.rawValue else {
-                    sampleBuffer.release()
                     return
                 }
 
@@ -364,7 +355,7 @@ class MovieRecorder: NSObject {
                     print("\(mediaType.rawValue) input not ready for more media data, dropping buffer")
                 }
 
-                sampleBuffer.release()
+                // CMSampleBuffer is automatically managed by ARC in Swift
             }
         }
     }
@@ -372,7 +363,7 @@ class MovieRecorder: NSObject {
     private func transition(toStatus newStatus: MovieRecorderStatus, error: Error?) {
         var shouldNotifyDelegate = false
 
-        if LOG_STATUS_TRANSITIONS {
+        if LOG_MOVIE_RECORDER_STATUS_TRANSITIONS {
             print("MovieRecorder state transition: \(status) -> \(newStatus)")
         }
 
@@ -389,7 +380,7 @@ class MovieRecorder: NSObject {
                     }
                 }
 
-                if LOG_STATUS_TRANSITIONS, let error = error {
+                if LOG_MOVIE_RECORDER_STATUS_TRANSITIONS, let error = error {
                     print("MovieRecorder error: \(error.localizedDescription), code: \((error as NSError).code)")
                 }
             } else if newStatus == .recording {
@@ -520,29 +511,5 @@ class MovieRecorder: NSObject {
         videoInput = nil
         audioInput = nil
         assetWriter = nil
-    }
-}
-
-// MARK: - CMFormatDescription Extension
-
-private extension CMFormatDescription {
-    func retained() -> CMFormatDescription {
-        return (self as CMFormatDescription).retain()
-    }
-
-    func release() {
-        (self as CMFormatDescription).release()
-    }
-}
-
-// MARK: - CMSampleBuffer Extension
-
-private extension CMSampleBuffer {
-    func retain() {
-        CMSampleBufferRetain(self)
-    }
-
-    func release() {
-        CMSampleBufferRelease(self)
     }
 }
