@@ -105,8 +105,7 @@ class RosyWriterCapturePipeline: NSObject {
         self.delegateCallbackQueue = callbackQueue
         
         self.sessionQueue = DispatchQueue(label: "com.apple.sample.capturepipeline.session")
-        self.videoDataOutputQueue = DispatchQueue(label: "com.apple.sample.capturepipeline.video")
-        videoDataOutputQueue.setTarget(queue: DispatchQueue.global(qos: .userInitiated))
+        self.videoDataOutputQueue = DispatchQueue(label: "com.apple.sample.capturepipeline.video", qos: .userInitiated)
         
         // Initialize renderer (using CPU renderer as default)
         self.renderer = RosyWriterCPURenderer()

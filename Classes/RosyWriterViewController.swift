@@ -148,13 +148,20 @@ class RosyWriterViewController: UIViewController {
     // MARK: - Camera Helpers
     
     private func camera(with position: AVCaptureDevice.Position) -> AVCaptureDevice? {
-        let devices = AVCaptureDevice.devices(for: .video)
-        for device in devices {
-            if device.position == position {
+        if #available(iOS 10.0, *) {
+            let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: position)
+            if let device = discoverySession.devices.first {
                 return device
             }
+            let fallbackSession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera], mediaType: .video, position: .unspecified)
+            return fallbackSession.devices.first { $0.position == position }
+        } else {
+            let devices = AVCaptureDevice.devices(for: .video)
+            for device in devices where device.position == position {
+                return device
+            }
+            return nil
         }
-        return nil
     }
     
     // MARK: - Focus Box

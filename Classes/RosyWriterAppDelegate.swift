@@ -11,7 +11,6 @@ import CoreLocation
 import AVFoundation
 import Photos
 
-@main
 class RosyWriterAppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
@@ -19,8 +18,23 @@ class RosyWriterAppDelegate: UIResponder, UIApplicationDelegate {
     // Location manager for background location updates
     private var locationManager: CLLocationManager?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+private func clearScenePersistence() {
+    let fileManager = FileManager.default
+    if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+        let sceneSessionDir = appSupport.appendingPathComponent("com.apple.uikit/sceneSession")
+        if fileManager.fileExists(atPath: sceneSessionDir.path) {
+            do {
+                try fileManager.removeItem(at: sceneSessionDir)
+                print("🧹 Cleared corrupted sceneSession data at \(sceneSessionDir.path)")
+            } catch {
+                print("⚠️ Failed to clear sceneSession data: \(error)")
+            }
+        }
+    }
+}
 
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    clearScenePersistence()
         // Configure the application
         setupAppearance()
         setupLocationManager()
