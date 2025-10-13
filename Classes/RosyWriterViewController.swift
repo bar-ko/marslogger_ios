@@ -10,6 +10,7 @@ import UIKit
 import AVFoundation
 import QuartzCore
 import MessageUI
+import CoreLocation
 
 // MARK: - RosyWriterViewController
 
@@ -21,6 +22,8 @@ class RosyWriterViewController: UIViewController {
     @IBOutlet var recordButton: UIBarButtonItem!
     @IBOutlet var framerateLabel: UILabel!
     @IBOutlet var dimensionsLabel: UILabel!
+    @IBOutlet weak var speedMphLabel: UILabel!
+    @IBOutlet weak var speedKmLabel: UILabel!
     @IBOutlet weak var exposureDurationLabel: UILabel!
     @IBOutlet weak var lockAutoLabel: UILabel!
     @IBOutlet weak var exportButton: UIBarButtonItem!
@@ -40,6 +43,7 @@ class RosyWriterViewController: UIViewController {
     private var labelTimer: Timer?
     private var previewView: OpenGLPixelBufferView?
     private var capturePipeline: RosyWriterCapturePipeline?
+    private var previousSpeed: CLLocationSpeed = -1
     
     // MARK: - Lifecycle
     
@@ -98,24 +102,25 @@ class RosyWriterViewController: UIViewController {
         // Long press to unlock auto focus and auto exposure
         let longPressGestureRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPressFrom(_:)))
         longPressGestureRecognizer.minimumPressDuration = 0.5
-        preview.addGestureRecognizer(longPressGestureRecognizer)
-        longPressGestureRecognizer.delegate = self
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
+
+        previousSpeed = -1
         capturePipeline?.startRunning()
-        
+
         labelTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
     }
+
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
         labelTimer?.invalidate()
         labelTimer = nil
-        
+
+        previousSpeed = -1
         capturePipeline?.stopRunning()
     }
     
@@ -376,6 +381,21 @@ class RosyWriterViewController: UIViewController {
         
         let exposureDurationString = String(format: "%.2f ms", Double(capturePipeline.exposureDuration) / 1000000.0)
         exposureDurationLabel.text = exposureDurationString
+
+        let currentSpeed = capturePipeline.getCurrentSpeed()
+        if previousSpeed < 0 || abs(currentSpeed - previousSpeed) >= 0.01 {
+            updateSpeedLabels(withMetersPerSecond: currentSpeed)
+            previousSpeed = currentSpeed
+        }
+    }
+
+    private func updateSpeedLabels(withMetersPerSecond speed: CLLocationSpeed) {
+        let clampedSpeed = max(speed, 0)
+        let speedMph = clampedSpeed * 2.23693629
+        let speedKm = clampedSpeed * 3.6
+
+        speedMphLabel.text = String(format: "%.1f mph", speedMph)
+        speedKmLabel.text = String(format: "%.1f km/h", speedKm)
     }
     
     private func showAlert(_ message: String) {

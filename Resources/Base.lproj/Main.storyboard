@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23727" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" colorMatched="YES" initialViewController="t7Y-jQ-554">
-    <device id="retina4_7" orientation="portrait" appearance="light"/>
+    <device id="retina6_3" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23721"/>
@@ -16,7 +16,7 @@
                         <viewControllerLayoutGuide type="bottom" id="xMO-Vz-sE9"/>
                     </layoutGuides>
                     <view key="view" contentMode="scaleToFill" id="6i6-CY-hgq">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <rect key="frame" x="0.0" y="0.0" width="402" height="874"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
                             <view alpha="0.5" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="8IV-j9-wWu">
@@ -55,7 +55,7 @@
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                             </view>
                             <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" fixedFrame="YES" barStyle="black" translucent="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Cl3-hM-2kb">
-                                <rect key="frame" x="0.0" y="590" width="375" height="44"/>
+                                <rect key="frame" x="0.0" y="797" width="402" height="44"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                                 <items>
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="J9Y-xU-caX"/>
@@ -75,6 +75,20 @@
                                     <barButtonItem style="plain" systemItem="flexibleSpace" id="T0o-vh-yzo"/>
                                 </items>
                             </toolbar>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Mph:" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="4fE-ot-U1j" userLabel="Speed_mph_label">
+                                <rect key="frame" x="20" y="629" width="355" height="41"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="34"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Km/h: " lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="YHU-hb-DDn" userLabel="Speed_km_label">
+                                <rect key="frame" x="20" y="678" width="359" height="41"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="34"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
@@ -87,11 +101,13 @@
                         <outlet property="lockAutoLabel" destination="ddo-0v-VTw" id="zL7-84-GNQ"/>
                         <outlet property="preview" destination="8IV-j9-wWu" id="HrH-S0-ydZ"/>
                         <outlet property="recordButton" destination="E0C-mB-ENL" id="Eh7-BH-UNm"/>
+                        <outlet property="speedKmLabel" destination="YHU-hb-DDn" id="7C9-YI-3xr"/>
+                        <outlet property="speedMphLabel" destination="4fE-ot-U1j" id="WN2-jn-f77"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="NIy-9N-I9Q" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="175.19999999999999" y="-45.42728635682159"/>
+            <point key="canvasLocation" x="174.62686567164178" y="-45.995423340961096"/>
         </scene>
     </scenes>
 </document>
