@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		171999DA19C7695800A719B5 /* CoreImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 171999D919C7695800A719B5 /* CoreImage.framework */; };
-		1756C9D619BE5E1F0080DD55 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 6F90DDE51395CAAA00125BDA /* main.m */; };
 		1756C9E219BE5E1F0080DD55 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F096BF9157ED5110075E328 /* ImageIO.framework */; };
 		1756C9E419BE5E1F0080DD55 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F90DE0A1395CCF500125BDA /* CoreMedia.framework */; };
 		1756C9E519BE5E1F0080DD55 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F90DE081395CCEA00125BDA /* QuartzCore.framework */; };
@@ -25,7 +24,6 @@
 		1756C9F419BE5E1F0080DD55 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7214DBCD182AEF8900EA3F99 /* Images.xcassets */; };
 		17E79A3519C8AD89004B709D /* ShaderUtilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 6FF11C9316A877B100E14D71 /* ShaderUtilities.c */; };
 		17E79A3619C8AD8A004B709D /* ShaderUtilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 6FF11C9316A877B100E14D71 /* ShaderUtilities.c */; };
-		1FCCE64819BA80A5009D7A6B /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 6F90DDE51395CAAA00125BDA /* main.m */; };
 		1FCCE65419BA80A5009D7A6B /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F096BF9157ED5110075E328 /* ImageIO.framework */; };
 		1FCCE65619BA80A5009D7A6B /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F90DE0A1395CCF500125BDA /* CoreMedia.framework */; };
 		1FCCE65719BA80A5009D7A6B /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F90DE081395CCEA00125BDA /* QuartzCore.framework */; };
@@ -46,7 +44,6 @@
 		28365599139FE71B00D09100 /* ReadMe.txt in Resources */ = {isa = PBXBuildFile; fileRef = 28365598139FE71B00D09100 /* ReadMe.txt */; };
 		5DBA2A9919C232E200530F7A /* Launch.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 5DBA2A9719C232E200530F7A /* Launch.storyboard */; };
 		5DBA2A9A19C232E200530F7A /* Launch.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 5DBA2A9719C232E200530F7A /* Launch.storyboard */; };
-		696D280B19CA539900A23D81 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 6F90DDE51395CAAA00125BDA /* main.m */; };
 		696D281019CA539900A23D81 /* ShaderUtilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 6FF11C9316A877B100E14D71 /* ShaderUtilities.c */; };
 		696D281419CA539900A23D81 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F096BF9157ED5110075E328 /* ImageIO.framework */; };
 		696D281619CA539900A23D81 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F90DE0A1395CCF500125BDA /* CoreMedia.framework */; };
@@ -134,7 +131,6 @@
 		6F90DDDD1395CAAA00125BDA /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		6F90DDE11395CAAA00125BDA /* MarsLogger-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "MarsLogger-Info.plist"; path = "../MarsLogger-Info.plist"; sourceTree = "<group>"; };
 		6F90DDE31395CAAA00125BDA /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		6F90DDE51395CAAA00125BDA /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; lineEnding = 0; name = main.m; path = ../main.m; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objc; };
 		6F90DDE71395CAAA00125BDA /* MarsLogger-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "MarsLogger-Prefix.pch"; path = "../MarsLogger-Prefix.pch"; sourceTree = "<group>"; };
 		6F90DDFE1395CCB600125BDA /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		6F90DE001395CCBE00125BDA /* AssetsLibrary.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AssetsLibrary.framework; path = System/Library/Frameworks/AssetsLibrary.framework; sourceTree = SDKROOT; };
@@ -370,7 +366,6 @@
 		AF052D151422BCEA00CD2D66 /* Other Sources */ = {
 			isa = PBXGroup;
 			children = (
-				6F90DDE51395CAAA00125BDA /* main.m */,
 				6F90DDE71395CAAA00125BDA /* MarsLogger-Prefix.pch */,
 			);
 			name = "Other Sources";
@@ -593,7 +588,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1756C9D619BE5E1F0080DD55 /* main.m in Sources */,
 				17E79A3619C8AD8A004B709D /* ShaderUtilities.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -602,7 +596,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1FCCE64819BA80A5009D7A6B /* main.m in Sources */,
 				17E79A3519C8AD89004B709D /* ShaderUtilities.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -611,7 +604,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				696D280B19CA539900A23D81 /* main.m in Sources */,
 				696D281019CA539900A23D81 /* ShaderUtilities.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

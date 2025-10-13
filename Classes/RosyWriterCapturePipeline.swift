@@ -12,6 +12,7 @@ import CoreMedia
 import ImageIO
 import Photos
 import UIKit
+import CoreLocation
 
 // MARK: - Constants
 
@@ -287,6 +288,10 @@ class RosyWriterCapturePipeline: NSObject {
     
     func getInertialFileURL() -> URL? {
         return inertialRecorder.fileURL
+    }
+    
+    func getCurrentSpeed() -> CLLocationSpeed {
+        return inertialRecorder.currentSpeed
     }
     
     func transform(fromVideoBufferOrientationTo orientation: AVCaptureVideoOrientation, withAutoMirroring mirror: Bool) -> CGAffineTransform {

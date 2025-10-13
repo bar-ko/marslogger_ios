@@ -85,6 +85,7 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
 
     var fileURL: URL?
     var isRecording: Bool = false
+    private(set) var currentSpeed: CLLocationSpeed = 0.0
 
     private var motionManager: CMMotionManager
     private var locationManager: CLLocationManager
@@ -439,6 +440,8 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
             motionManager.stopAccelerometerUpdates()
             locationManager.stopUpdatingLocation()
 
+            currentSpeed = 0.0
+
             var mainString = ""
 
             if !interpolateAccel {
@@ -492,6 +495,7 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
             print("Start recording inertial data!")
             rawAccelGyroData = []
             rawGPSData = []
+            currentSpeed = 0.0
             motionManager.gyroUpdateInterval = 1.0 / RATE
             motionManager.accelerometerUpdateInterval = 1.0 / RATE
 
@@ -604,6 +608,7 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
         gpsNode.speed = location.speed >= 0 ? location.speed : 0.0  // Handle negative speed values
 
         rawGPSData?.append(gpsNode)
+        currentSpeed = gpsNode.speed
         gpsUpdateCount += 1
 
         // Log GPS update frequency every 10 updates
