@@ -126,6 +126,7 @@ protocol RosyWriterCapturePipelineDelegate: AnyObject {
     func capturePipeline(_ capturePipeline: RosyWriterCapturePipeline, recordingDidFailWithError error: Error)
     func capturePipelineRecordingWillStop(_ capturePipeline: RosyWriterCapturePipeline)
     func capturePipelineRecordingDidStop(_ capturePipeline: RosyWriterCapturePipeline)
+    func capturePipeline(_ capturePipeline: RosyWriterCapturePipeline, didUpdateSavingProgress progress: Float)
 }
 
 // MARK: - OpenGLPixelBufferView

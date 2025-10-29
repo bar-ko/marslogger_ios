@@ -30,6 +30,7 @@ protocol MovieRecorderDelegate: AnyObject {
     func movieRecorderDidFinishPreparing(_ recorder: MovieRecorder)
     func movieRecorder(_ recorder: MovieRecorder, didFailWithError error: Error)
     func movieRecorderDidFinishRecording(_ recorder: MovieRecorder)
+    func movieRecorder(_ recorder: MovieRecorder, didUpdateProgress progress: Float)
 }
 
 // MARK: - MovieRecorder Class
@@ -61,6 +62,9 @@ class MovieRecorder: NSObject {
     private var videoTrackTransform: CGAffineTransform = .identity
     private var videoTrackSettings: [String: Any]?
     private var videoInput: AVAssetWriterInput?
+    
+    private var progressTimer: Timer?
+    private var progressStartTime: Date?
 
     // MARK: - Initialization
 
@@ -266,9 +270,15 @@ class MovieRecorder: NSObject {
                 self.transition(toStatus: .finishingRecordingPart2, error: nil)
                 objc_sync_exit(self)
 
+                // Start progress tracking
+                self.startProgressTracking()
+
                 // Finish writing
                 self.assetWriter?.finishWriting { [weak self] in
                     guard let self = self else { return }
+
+                    // Stop progress tracking
+                    self.stopProgressTracking()
 
                     objc_sync_enter(self)
                     defer { objc_sync_exit(self) }
@@ -507,7 +517,42 @@ class MovieRecorder: NSObject {
         return NSError(domain: "com.apple.dts.samplecode", code: 0, userInfo: errorDict)
     }
 
+    private func startProgressTracking() {
+        progressStartTime = Date()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            self?.updateProgress()
+        }
+    }
+    
+    private func stopProgressTracking() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+        progressStartTime = nil
+        
+        // Report 100% completion
+        delegateCallbackQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.delegate?.movieRecorder(self, didUpdateProgress: 1.0)
+        }
+    }
+    
+    private func updateProgress() {
+        guard let startTime = progressStartTime else { return }
+        
+        let elapsed = Date().timeIntervalSince(startTime)
+        // Estimate progress based on elapsed time (assuming typical processing takes 3-10 seconds)
+        // This is a rough estimate since AVAssetWriter doesn't provide actual progress
+        let estimatedDuration: TimeInterval = 5.0 // seconds
+        let progress = min(Float(elapsed / estimatedDuration), 0.95) // Cap at 95% until actually finished
+        
+        delegateCallbackQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.delegate?.movieRecorder(self, didUpdateProgress: progress)
+        }
+    }
+
     private func teardownAssetWriterAndInputs() {
+        stopProgressTracking()
         videoInput = nil
         audioInput = nil
         assetWriter = nil

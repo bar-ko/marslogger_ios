@@ -22,11 +22,17 @@ class RosyWriterViewController: UIViewController {
     @IBOutlet var recordButton: UIBarButtonItem!
     @IBOutlet var framerateLabel: UILabel!
     @IBOutlet var dimensionsLabel: UILabel!
+    @IBOutlet weak var recordTimeLabel: UILabel!
     @IBOutlet weak var speedMphLabel: UILabel!
     @IBOutlet weak var speedKmLabel: UILabel!
     @IBOutlet weak var exposureDurationLabel: UILabel!
     @IBOutlet weak var lockAutoLabel: UILabel!
     @IBOutlet weak var exportButton: UIBarButtonItem!
+    
+    // Progress bar elements
+    private var progressView: UIProgressView?
+    private var progressLabel: UILabel?
+    private var progressContainerView: UIView?
     
     // MARK: - Properties
     
@@ -45,6 +51,10 @@ class RosyWriterViewController: UIViewController {
     private var capturePipeline: RosyWriterCapturePipeline?
     private var previousSpeed: CLLocationSpeed = -1
     
+    // Recording timer properties
+    private var recordingTimer: Timer?
+    private var recordingStartTime: Date?
+    
     // MARK: - Lifecycle
     
     deinit {
@@ -54,6 +64,9 @@ class RosyWriterViewController: UIViewController {
             NotificationCenter.default.removeObserver(self, name: UIDevice.orientationDidChangeNotification, object: UIDevice.current)
             UIDevice.current.endGeneratingDeviceOrientationNotifications()
         }
+        
+        // Clean up timers
+        recordingTimer?.invalidate()
     }
     
     override func viewDidLoad() {
@@ -102,6 +115,9 @@ class RosyWriterViewController: UIViewController {
         // Long press to unlock auto focus and auto exposure
         let longPressGestureRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPressFrom(_:)))
         longPressGestureRecognizer.minimumPressDuration = 0.5
+        
+        // Setup progress bar
+        setupProgressBar()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -119,6 +135,9 @@ class RosyWriterViewController: UIViewController {
         
         labelTimer?.invalidate()
         labelTimer = nil
+        
+        // Stop recording timer if active
+        stopRecordingTimer()
 
         previousSpeed = -1
         capturePipeline?.stopRunning()
@@ -276,6 +295,9 @@ class RosyWriterViewController: UIViewController {
             
             capturePipeline?.startRecording()
             
+            // Start recording timer
+            startRecordingTimer()
+            
             recording = true
         }
     }
@@ -322,12 +344,40 @@ class RosyWriterViewController: UIViewController {
         }
     }
     
+    // MARK: - Recording Timer Methods
+    
+    private func startRecordingTimer() {
+        recordingStartTime = Date()
+        recordTimeLabel.text = "00:00"
+        recordingTimer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateRecordingTime), userInfo: nil, repeats: true)
+    }
+    
+    private func stopRecordingTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        recordingStartTime = nil
+        recordTimeLabel.text = ""
+    }
+    
+    @objc private func updateRecordingTime() {
+        guard let startTime = recordingStartTime else { return }
+        
+        let elapsed = Date().timeIntervalSince(startTime)
+        let minutes = Int(elapsed) / 60
+        let seconds = Int(elapsed) % 60
+        
+        recordTimeLabel.text = String(format: "%02d:%02d", minutes, seconds)
+    }
+    
     // MARK: - Helper Methods
     
     private func recordingStopped() {
         recording = false
         recordButton.isEnabled = true
         recordButton.title = "Record"
+        
+        // Stop recording timer
+        stopRecordingTimer()
         
         UIApplication.shared.isIdleTimerDisabled = false
         
@@ -359,6 +409,60 @@ class RosyWriterViewController: UIViewController {
             previewView.bounds = bounds
             previewView.center = CGPoint(x: view.bounds.size.width / 2.0, y: view.bounds.size.height / 2.0)
         }
+    }
+    
+    private func setupProgressBar() {
+        // Create container view
+        progressContainerView = UIView()
+        progressContainerView?.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+        progressContainerView?.layer.cornerRadius = 10
+        progressContainerView?.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create progress view
+        progressView = UIProgressView(progressViewStyle: .default)
+        progressView?.progressTintColor = UIColor.systemBlue
+        progressView?.trackTintColor = UIColor.systemGray4
+        progressView?.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create progress label
+        progressLabel = UILabel()
+        progressLabel?.text = "Сохранение видео... 0%"
+        progressLabel?.textColor = UIColor.white
+        progressLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        progressLabel?.textAlignment = .center
+        progressLabel?.translatesAutoresizingMaskIntoConstraints = false
+        
+        guard let containerView = progressContainerView,
+              let progressView = progressView,
+              let progressLabel = progressLabel else { return }
+        
+        // Add subviews
+        containerView.addSubview(progressLabel)
+        containerView.addSubview(progressView)
+        view.addSubview(containerView)
+        
+        // Set up constraints
+        NSLayoutConstraint.activate([
+            // Container view constraints
+            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            containerView.widthAnchor.constraint(equalToConstant: 280),
+            containerView.heightAnchor.constraint(equalToConstant: 80),
+            
+            // Progress label constraints
+            progressLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            progressLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            progressLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            
+            // Progress view constraints
+            progressView.topAnchor.constraint(equalTo: progressLabel.bottomAnchor, constant: 8),
+            progressView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            progressView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            progressView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16)
+        ])
+        
+        // Initially hidden
+        containerView.isHidden = true
     }
     
     @objc private func deviceOrientationDidChange() {
@@ -487,6 +591,9 @@ extension RosyWriterViewController: RosyWriterCapturePipelineDelegate {
         // Disable record button until we are ready to start another recording
         recordButton.isEnabled = false
         recordButton.title = "Record"
+        
+        // Show progress bar when starting to save video
+        showProgressBar()
     }
     
     func capturePipelineRecordingDidStop(_ capturePipeline: RosyWriterCapturePipeline) {
@@ -495,7 +602,41 @@ extension RosyWriterViewController: RosyWriterCapturePipelineDelegate {
     
     func capturePipeline(_ capturePipeline: RosyWriterCapturePipeline, recordingDidFailWithError error: Error) {
         recordingStopped()
+        hideProgressBar()
         showError(error)
+    }
+    
+    func capturePipeline(_ capturePipeline: RosyWriterCapturePipeline, didUpdateSavingProgress progress: Float) {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateProgressBar(progress: progress)
+        }
+    }
+}
+
+// MARK: - Progress Bar Methods
+
+extension RosyWriterViewController {
+    private func showProgressBar() {
+        progressContainerView?.isHidden = false
+        progressView?.progress = 0.0
+        progressLabel?.text = "Saving video... 0%"
+    }
+    
+    private func hideProgressBar() {
+        progressContainerView?.isHidden = true
+    }
+    
+    private func updateProgressBar(progress: Float) {
+        let percentage = Int(progress * 100)
+        progressView?.progress = progress
+        progressLabel?.text = "Saving video... \(percentage)%"
+        
+        // Hide progress bar when complete
+        if progress >= 1.0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.hideProgressBar()
+            }
+        }
     }
 }
 
