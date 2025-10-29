@@ -83,6 +83,10 @@
 		9539407B2E980AB800EB3E20 /* OpenGLPixelBufferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */; };
 		9539407C2E980AB800EB3E20 /* CameraControlFunctions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940782E980AB800EB3E20 /* CameraControlFunctions.swift */; };
 		9539407E2E99068C00EB3E20 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539407D2E99068C00EB3E20 /* main.swift */; };
+		95AD9D422EB2871500ED8066 /* AWSClientRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 95AD9D412EB2871500ED8066 /* AWSClientRuntime */; };
+		95AD9D442EB2871500ED8066 /* AWSS3 in Frameworks */ = {isa = PBXBuildFile; productRef = 95AD9D432EB2871500ED8066 /* AWSS3 */; };
+		95AD9D472EB28A5D00ED8066 /* AWSConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */; };
+		95AD9D482EB28A5D00ED8066 /* S3UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */; };
 		F318DFE920E738C000260914 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318DFE820E738C000260914 /* Photos.framework */; };
 		F318E01420E79AE300260914 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
 		F318E01420E79AE300260915 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C1156CB42100512475 /* CoreLocation.framework */; };
@@ -153,6 +157,8 @@
 		953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenGLPixelBufferView.swift; path = Classes/Utilities/OpenGLPixelBufferView.swift; sourceTree = "<group>"; };
 		953940782E980AB800EB3E20 /* CameraControlFunctions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CameraControlFunctions.swift; path = Classes/Utilities/CameraControlFunctions.swift; sourceTree = "<group>"; };
 		9539407D2E99068C00EB3E20 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AWSConfig.swift; path = Classes/Utilities/AWSConfig.swift; sourceTree = "<group>"; };
+		95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = S3UploadService.swift; path = Classes/Utilities/S3UploadService.swift; sourceTree = "<group>"; };
 		F318DFE820E738C000260914 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
 		F318E01520E79B5E00260914 /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MessageUI.framework; path = System/Library/Frameworks/MessageUI.framework; sourceTree = SDKROOT; };
 		F3C1A8DA22945F7A00A59A8E /* Thirdparty */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Thirdparty; sourceTree = "<group>"; };
@@ -240,12 +246,14 @@
 				F318DFE920E738C000260914 /* Photos.framework in Frameworks */,
 				6F096BFA157ED5110075E328 /* ImageIO.framework in Frameworks */,
 				6F90DE0B1395CCF500125BDA /* CoreMedia.framework in Frameworks */,
+				95AD9D442EB2871500ED8066 /* AWSS3 in Frameworks */,
 				6F90DE091395CCEA00125BDA /* QuartzCore.framework in Frameworks */,
 				6F90DE071395CCE000125BDA /* CoreVideo.framework in Frameworks */,
 				6F90DDDE1395CAAA00125BDA /* CoreGraphics.framework in Frameworks */,
 				6F90DE051395CCD100125BDA /* OpenGLES.framework in Frameworks */,
 				6F90DE011395CCBE00125BDA /* AssetsLibrary.framework in Frameworks */,
 				6F90DDFF1395CCB600125BDA /* AVFoundation.framework in Frameworks */,
+				95AD9D422EB2871500ED8066 /* AWSClientRuntime in Frameworks */,
 				6F90DDDA1395CAAA00125BDA /* UIKit.framework in Frameworks */,
 				6F90DDDC1395CAAA00125BDA /* Foundation.framework in Frameworks */,
 			);
@@ -273,6 +281,8 @@
 		6F90DDCA1395CAAA00125BDA = {
 			isa = PBXGroup;
 			children = (
+				95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */,
+				95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */,
 				9539407D2E99068C00EB3E20 /* main.swift */,
 				953940782E980AB800EB3E20 /* CameraControlFunctions.swift */,
 				953940752E980AB800EB3E20 /* MovieRecorder.swift */,
@@ -511,6 +521,9 @@
 				Base,
 			);
 			mainGroup = 6F90DDCA1395CAAA00125BDA;
+			packageReferences = (
+				95AD9D402EB2871500ED8066 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */,
+			);
 			productRefGroup = 6F90DDD61395CAAA00125BDA /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -612,6 +625,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				95AD9D472EB28A5D00ED8066 /* AWSConfig.swift in Sources */,
+				95AD9D482EB28A5D00ED8066 /* S3UploadService.swift in Sources */,
 				953940792E980AB800EB3E20 /* MovieRecorder.swift in Sources */,
 				9539407A2E980AB800EB3E20 /* VideoTimeConverter.swift in Sources */,
 				9539407E2E99068C00EB3E20 /* main.swift in Sources */,
@@ -1140,6 +1155,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		95AD9D402EB2871500ED8066 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/awslabs/aws-sdk-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.72;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		95AD9D412EB2871500ED8066 /* AWSClientRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 95AD9D402EB2871500ED8066 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSClientRuntime;
+		};
+		95AD9D432EB2871500ED8066 /* AWSS3 */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 95AD9D402EB2871500ED8066 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSS3;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6F90DDCC1395CAAA00125BDA /* Project object */;
 }

@@ -11,6 +11,8 @@ import AVFoundation
 import QuartzCore
 import MessageUI
 import CoreLocation
+import AWSS3
+import AWSClientRuntime
 
 // MARK: - RosyWriterViewController
 
@@ -28,11 +30,18 @@ class RosyWriterViewController: UIViewController {
     @IBOutlet weak var exposureDurationLabel: UILabel!
     @IBOutlet weak var lockAutoLabel: UILabel!
     @IBOutlet weak var exportButton: UIBarButtonItem!
+    @IBOutlet weak var uploadButton: UIBarButtonItem!
     
     // Progress bar elements
     private var progressView: UIProgressView?
     private var progressLabel: UILabel?
     private var progressContainerView: UIView?
+    
+    // S3 Upload elements
+    private var uploadProgressView: UIProgressView?
+    private var uploadProgressLabel: UILabel?
+    private var uploadProgressContainerView: UIView?
+    private let s3UploadService = S3UploadService.shared
     
     // MARK: - Properties
     
@@ -118,6 +127,12 @@ class RosyWriterViewController: UIViewController {
         
         // Setup progress bar
         setupProgressBar()
+        
+        // Setup upload progress bar
+        setupUploadProgressBar()
+        
+        // Setup S3 upload service
+        s3UploadService.delegate = self
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -302,46 +317,31 @@ class RosyWriterViewController: UIViewController {
         }
     }
     
-    @IBAction func exportButtonPressed(_ sender: Any) {
+@IBAction func exportButtonPressed(_ sender: Any) {
         guard let videoMetadataFile = capturePipeline?.metadataFileURL,
               let inertialDataFile = capturePipeline?.getInertialFileURL() else {
-            print("Video metadata file or inertial data file is nil, so no export will be done!")
+            showAlert("No metadata files available for upload")
             return
         }
         
         if recording {
-            print("In recording state no export will be done!")
+            showAlert("Cannot upload while recording")
             return
         }
         
-        if MFMailComposeViewController.canSendMail() {
-            let mailVC = MFMailComposeViewController()
-            mailVC.mailComposeDelegate = self
-            
-            let outputURL = videoMetadataFile.deletingLastPathComponent()
-            let outputBasename = outputURL.lastPathComponent
-            mailVC.setSubject(outputBasename)
-            
-            let message = """
-            The attached metadata of camera frames and inertial data were captured by the MARS logger starting from \(outputBasename)!
-            The associated video was the most recent one found with the Photos App at the time of sending this email.
-            """
-            mailVC.setMessageBody(message, isHTML: false)
-            
-            if let metaData = try? Data(contentsOf: videoMetadataFile) {
-                let videoBasename = videoMetadataFile.lastPathComponent
-                mailVC.addAttachmentData(metaData, mimeType: "text/csv", fileName: videoBasename)
-            }
-            
-            if let inertialData = try? Data(contentsOf: inertialDataFile) {
-                let inertialBasename = inertialDataFile.lastPathComponent
-                mailVC.addAttachmentData(inertialData, mimeType: "text/csv", fileName: inertialBasename)
-            }
-            
-            present(mailVC, animated: true, completion: nil)
-        } else {
-            showAlert("This device cannot send email. Have you setup the mailbox?")
-        }
+        // Show confirmation dialog
+        let alert = UIAlertController(
+            title: "Upload to S3",
+            message: "Upload video metadata and inertial data to AWS S3?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Upload", style: .default) { [weak self] _ in
+            self?.startS3Upload()
+        })
+        
+        present(alert, animated: true)
     }
     
     // MARK: - Recording Timer Methods
@@ -446,6 +446,60 @@ class RosyWriterViewController: UIViewController {
             // Container view constraints
             containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            containerView.widthAnchor.constraint(equalToConstant: 280),
+            containerView.heightAnchor.constraint(equalToConstant: 80),
+            
+            // Progress label constraints
+            progressLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            progressLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            progressLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            
+            // Progress view constraints
+            progressView.topAnchor.constraint(equalTo: progressLabel.bottomAnchor, constant: 8),
+            progressView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            progressView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            progressView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16)
+        ])
+        
+        // Initially hidden
+        containerView.isHidden = true
+    }
+    
+    private func setupUploadProgressBar() {
+        // Create container view
+        uploadProgressContainerView = UIView()
+        uploadProgressContainerView?.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.9)
+        uploadProgressContainerView?.layer.cornerRadius = 10
+        uploadProgressContainerView?.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create progress view
+        uploadProgressView = UIProgressView(progressViewStyle: .default)
+        uploadProgressView?.progressTintColor = UIColor.white
+        uploadProgressView?.trackTintColor = UIColor.systemGray5
+        uploadProgressView?.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create progress label
+        uploadProgressLabel = UILabel()
+        uploadProgressLabel?.text = "Uploading to S3... 0%"
+        uploadProgressLabel?.textColor = UIColor.white
+        uploadProgressLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        uploadProgressLabel?.textAlignment = .center
+        uploadProgressLabel?.translatesAutoresizingMaskIntoConstraints = false
+        
+        guard let containerView = uploadProgressContainerView,
+              let progressView = uploadProgressView,
+              let progressLabel = uploadProgressLabel else { return }
+        
+        // Add subviews
+        containerView.addSubview(progressLabel)
+        containerView.addSubview(progressView)
+        view.addSubview(containerView)
+        
+        // Set up constraints
+        NSLayoutConstraint.activate([
+            // Container view constraints
+            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            containerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
             containerView.widthAnchor.constraint(equalToConstant: 280),
             containerView.heightAnchor.constraint(equalToConstant: 80),
             
@@ -640,6 +694,50 @@ extension RosyWriterViewController {
     }
 }
 
+// MARK: - S3 Upload Methods
+
+extension RosyWriterViewController {
+    
+    private func startS3Upload() {
+        guard let videoMetadataFile = capturePipeline?.metadataFileURL,
+              let inertialDataFile = capturePipeline?.getInertialFileURL() else {
+            showAlert("No files available for upload")
+            return
+        }
+        
+        showUploadProgressBar()
+        
+        // Upload metadata file first
+        s3UploadService.uploadMetadata(at: videoMetadataFile)
+        
+        // Upload inertial data file
+        s3UploadService.uploadInertialData(at: inertialDataFile)
+    }
+    
+    private func showUploadProgressBar() {
+        uploadProgressContainerView?.isHidden = false
+        uploadProgressView?.progress = 0.0
+        uploadProgressLabel?.text = "Uploading to S3... 0%"
+    }
+    
+    private func hideUploadProgressBar() {
+        uploadProgressContainerView?.isHidden = true
+    }
+    
+    private func updateUploadProgressBar(progress: Float, message: String) {
+        let percentage = Int(progress * 100)
+        uploadProgressView?.progress = progress
+        uploadProgressLabel?.text = "\(message) \(percentage)%"
+        
+        // Hide progress bar when complete
+        if progress >= 1.0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.hideUploadProgressBar()
+            }
+        }
+    }
+}
+
 // MARK: - Helper Extension (Coordinate Conversion)
 
 extension RosyWriterViewController {
@@ -716,5 +814,39 @@ extension RosyWriterViewController {
         
         guard let cropCGImage = takenCGImage.cropping(to: cropRect) else { return image }
         return UIImage(cgImage: cropCGImage, scale: 1, orientation: image.imageOrientation)
+    }
+}
+
+// MARK: - S3UploadDelegate
+
+extension RosyWriterViewController: S3UploadDelegate {
+    
+    func s3Upload(_ service: S3UploadService, didCompleteUpload key: String, location: String) {
+        DispatchQueue.main.async { [weak self] in
+            print("S3 Upload completed for key: \(key)")
+            print("Upload location: \(location)")
+            
+            // Check if all uploads are complete
+            if service.activeUploadCount() == 0 {
+                self?.updateUploadProgressBar(progress: 1.0, message: "Upload completed!")
+                self?.showAlert("Files successfully uploaded to S3")
+            }
+        }
+    }
+    
+    func s3Upload(_ service: S3UploadService, didFailWithError error: Error, forKey key: String) {
+        DispatchQueue.main.async { [weak self] in
+            print("S3 Upload failed for key \(key): \(error.localizedDescription)")
+            self?.hideUploadProgressBar()
+            self?.showAlert("Upload failed: \(error.localizedDescription)")
+        }
+    }
+    
+    func s3Upload(_ service: S3UploadService, didUpdateProgress progress: Float, forKey key: String) {
+        DispatchQueue.main.async { [weak self] in
+            // Average progress across all active uploads
+            let averageProgress = progress / Float(max(1, service.activeUploadCount()))
+            self?.updateUploadProgressBar(progress: averageProgress, message: "Uploading to S3...")
+        }
     }
 }
