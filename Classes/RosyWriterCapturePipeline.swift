@@ -10,7 +10,6 @@ import Foundation
 import AVFoundation
 import CoreMedia
 import ImageIO
-import Photos
 import UIKit
 import CoreLocation
 
@@ -821,7 +820,7 @@ class RosyWriterCapturePipeline: NSObject {
     }
     
     private func saveVideoAfterRecording() {
-        // Simply save video to app directory without Photos authorization
+        // Save video to app directory only (no photo gallery access)
         saveVideoToAppDirectory()
     }
     

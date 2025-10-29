@@ -8,7 +8,6 @@
 
 import AVFoundation
 import CoreLocation
-import Photos
 import UIKit
 
 class RosyWriterAppDelegate: UIResponder, UIApplicationDelegate {
@@ -105,77 +104,6 @@ class RosyWriterAppDelegate: UIResponder, UIApplicationDelegate {
         // Check location permission
         let locationStatus = CLLocationManager.authorizationStatus()
         print("Location permission status: \(locationStatus.rawValue)")
-
-        // Check photo library permission (iOS 14+)
-        if #available(iOS 14, *) {
-            let status = PHPhotoLibrary.authorizationStatus()
-            print("Photo library permission status: \(status.rawValue)")
-            if status != .authorized {
-                PHPhotoLibrary.requestAuthorization { status in
-                    if status != .authorized {
-                        let accessDescription =
-                            Bundle.main.object(
-                                forInfoDictionaryKey:
-                                    "NSPhotoLibraryUsageDescription"
-                            ) as? String ?? ""
-
-                        let alertController = UIAlertController(
-                            title: accessDescription,
-                            message:
-                                "To give permissions tap on 'Change Settings' button",
-                            preferredStyle: .alert
-                        )
-
-                        alertController.addAction(
-                            UIAlertAction(
-                                title: "Cancel",
-                                style: .cancel,
-                                handler: nil
-                            )
-                        )
-
-                        alertController.addAction(
-                            UIAlertAction(
-                                title: "Change Settings",
-                                style: .default
-                            ) { _ in
-                                if let url = URL(
-                                    string: UIApplication.openSettingsURLString
-                                ) {
-                                    UIApplication.shared.open(
-                                        url,
-                                        options: [:],
-                                        completionHandler: nil
-                                    )
-                                }
-                            }
-                        )
-
-                        // Get the top view controller to present alert
-                        DispatchQueue.main.async {
-                            if #available(iOS 13.0, *) {
-                                let windowScene =
-                                    UIApplication.shared.connectedScenes.first
-                                    as? UIWindowScene
-                                windowScene?.windows.first?.rootViewController?
-                                    .present(
-                                        alertController,
-                                        animated: true,
-                                        completion: nil
-                                    )
-                            } else {
-                                UIApplication.shared.keyWindow?
-                                    .rootViewController?.present(
-                                        alertController,
-                                        animated: true,
-                                        completion: nil
-                                    )
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

@@ -1,7 +1,6 @@
 import Foundation
 import AVFoundation
 import CoreMedia
-import Photos
 
 let kDesiredExposureTimeMillisec: Int64 = 5
 
@@ -31,47 +30,4 @@ func computeExpectedExposureTimeAndIso(format: AVCaptureDevice.Format,
     }
     
     print("Camera old exposure duration \(String(format: "%.5f", CMTimeGetSeconds(oldDuration))) and ISO \(String(format: "%.3f", oldISO)), desired exposure duration \(String(format: "%.5f", CMTimeGetSeconds(expectedDuration))) and ISO \(String(format: "%.3f", expectedISO)) and ratio \(String(format: "%.3f", ratio))")
-}
-
-/**
- Warn: This function does not return meaningful path at the moment.
- */
-func getAssetPath(_ assetLocalIdentifier: String) -> String? {
-    // see: https://stackoverflow.com/questions/27854937/ios8-photos-framework-how-to-get-the-nameor-filename-of-a-phasset
-    let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [assetLocalIdentifier], options: nil)
-    
-    guard fetchResult.count > 0 else { return nil }
-    
-    let asset = fetchResult.lastObject
-    var path: String?
-    
-    if let asset = asset {
-        // get photo info from this asset
-        // for iOS 13+
-        if #available(iOS 13.0, *) {
-            let imageRequestOptions = PHImageRequestOptions()
-            imageRequestOptions.isSynchronous = true
-
-            // Warn: Because by default, requestImageDataForAsset method executes asynchronously, the following way to pass out path will not work.
-            PHImageManager.default().requestImageDataAndOrientation(for: asset, options: imageRequestOptions) { (imageData, dataUTI, orientation, info) in
-                if let info = info,
-                   let fileURL = info["PHImageFileURLKey"] as? URL {
-                    // path looks like this -
-                    // file:///var/mobile/Media/DCIM/###APPLE/IMG_####.JPG
-                    path = FileManager.default.displayName(atPath: fileURL.path)
-                    print("PHImageFile path \(path ?? "")")
-                }
-            }
-        }
-
-        // for iOS 9+ (fallback for older versions)
-        // https://stackoverflow.com/questions/32687403/phasset-get-original-file-name/32706194
-        // this path looks like "Movie.MP4"
-        let resources = PHAssetResource.assetResources(for: asset)
-        if !resources.isEmpty {
-            path = resources[0].originalFilename
-        }
-    }
-    
-    return path
 }
