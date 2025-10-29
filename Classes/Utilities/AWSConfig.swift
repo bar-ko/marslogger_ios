@@ -4,7 +4,20 @@ import AWSS3
 
 struct AWSConfig {
     
-    // MARK: - Configuration Keys
+    // MARK: - Secrets Structure
+    
+    private struct SecretsFile: Codable {
+        let aws: AWSSecrets
+    }
+    
+    private struct AWSSecrets: Codable {
+        let bucket_name: String
+        let region: String
+        let access_key_id: String
+        let secret_access_key: String
+    }
+    
+    // MARK: - Configuration Keys (fallback)
     
     private enum ConfigKeys {
         static let bucketName = "AWS_S3_BUCKET_NAME"
@@ -20,27 +33,54 @@ struct AWSConfig {
         static let region = "us-east-1"
     }
     
+    // MARK: - Secrets Loading
+    
+    private static var secrets: AWSSecrets? = {
+        return loadSecrets()
+    }()
+    
+    private static func loadSecrets() -> AWSSecrets? {
+        // Try to find secrets.json in the main bundle
+        if let bundlePath = Bundle.main.path(forResource: "secrets", ofType: "json"),
+           let data = FileManager.default.contents(atPath: bundlePath) {
+            do {
+                let secretsFile = try JSONDecoder().decode(SecretsFile.self, from: data)
+                print("Loaded AWS secrets from bundle")
+                return secretsFile.aws
+            } catch {
+                print("Failed to decode secrets from bundle: \(error)")
+            }
+        }
+        
+        print("No secrets.json found, falling back to plist/environment variables")
+        return nil
+    }
+    
     // MARK: - Configuration Properties
     
     static var bucketName: String {
-        return Bundle.main.object(forInfoDictionaryKey: ConfigKeys.bucketName) as? String 
+        return secrets?.bucket_name
+            ?? Bundle.main.object(forInfoDictionaryKey: ConfigKeys.bucketName) as? String 
             ?? ProcessInfo.processInfo.environment[ConfigKeys.bucketName] 
             ?? Defaults.bucketName
     }
     
     static var region: String {
-        return Bundle.main.object(forInfoDictionaryKey: ConfigKeys.region) as? String 
+        return secrets?.region
+            ?? Bundle.main.object(forInfoDictionaryKey: ConfigKeys.region) as? String 
             ?? ProcessInfo.processInfo.environment[ConfigKeys.region] 
             ?? Defaults.region
     }
     
     static var accessKeyId: String? {
-        return Bundle.main.object(forInfoDictionaryKey: ConfigKeys.accessKeyId) as? String 
+        return secrets?.access_key_id
+            ?? Bundle.main.object(forInfoDictionaryKey: ConfigKeys.accessKeyId) as? String 
             ?? ProcessInfo.processInfo.environment[ConfigKeys.accessKeyId]
     }
     
     static var secretAccessKey: String? {
-        return Bundle.main.object(forInfoDictionaryKey: ConfigKeys.secretAccessKey) as? String 
+        return secrets?.secret_access_key
+            ?? Bundle.main.object(forInfoDictionaryKey: ConfigKeys.secretAccessKey) as? String 
             ?? ProcessInfo.processInfo.environment[ConfigKeys.secretAccessKey]
     }
     

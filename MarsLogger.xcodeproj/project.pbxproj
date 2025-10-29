@@ -87,6 +87,7 @@
 		95AD9D442EB2871500ED8066 /* AWSS3 in Frameworks */ = {isa = PBXBuildFile; productRef = 95AD9D432EB2871500ED8066 /* AWSS3 */; };
 		95AD9D472EB28A5D00ED8066 /* AWSConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */; };
 		95AD9D482EB28A5D00ED8066 /* S3UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */; };
+		95AD9D4C2EB2A03500ED8066 /* secrets.json in Resources */ = {isa = PBXBuildFile; fileRef = 95AD9D4B2EB2A03500ED8066 /* secrets.json */; };
 		F318DFE920E738C000260914 /* Photos.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F318DFE820E738C000260914 /* Photos.framework */; };
 		F318E01420E79AE300260914 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C0156CB42100512474 /* CoreMotion.framework */; };
 		F318E01420E79AE300260915 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 269351C1156CB42100512475 /* CoreLocation.framework */; };
@@ -159,6 +160,7 @@
 		9539407D2E99068C00EB3E20 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AWSConfig.swift; path = Classes/Utilities/AWSConfig.swift; sourceTree = "<group>"; };
 		95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = S3UploadService.swift; path = Classes/Utilities/S3UploadService.swift; sourceTree = "<group>"; };
+		95AD9D4B2EB2A03500ED8066 /* secrets.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = secrets.json; sourceTree = "<group>"; };
 		F318DFE820E738C000260914 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = System/Library/Frameworks/Photos.framework; sourceTree = SDKROOT; };
 		F318E01520E79B5E00260914 /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MessageUI.framework; path = System/Library/Frameworks/MessageUI.framework; sourceTree = SDKROOT; };
 		F3C1A8DA22945F7A00A59A8E /* Thirdparty */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Thirdparty; sourceTree = "<group>"; };
@@ -281,6 +283,7 @@
 		6F90DDCA1395CAAA00125BDA = {
 			isa = PBXGroup;
 			children = (
+				95AD9D4B2EB2A03500ED8066 /* secrets.json */,
 				95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */,
 				95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */,
 				9539407D2E99068C00EB3E20 /* main.swift */,
@@ -577,6 +580,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				95AD9D4C2EB2A03500ED8066 /* secrets.json in Resources */,
 				262F9EBA19A7CA8D001BB393 /* myFilter.vsh in Resources */,
 				6F90DDE41395CAAA00125BDA /* InfoPlist.strings in Resources */,
 				281FB47F176694640071511D /* Main.storyboard in Resources */,

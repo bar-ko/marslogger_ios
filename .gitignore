@@ -220,3 +220,8 @@ xcuserdata/
 # UNKNOWN: recommended by others, but I can't discover what these files are
 #
 Thirdparty/opencv2\.framework/
+
+####
+# Security: AWS credentials and secrets
+#
+secrets.json
