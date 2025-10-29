@@ -23,6 +23,12 @@ private let LOG_CAPTURE_PIPELINE_STATUS_TRANSITIONS = false
 let VIDEO_META_FILENAME = "movie_metadata.csv"
 let IMU_OUTPUT_FILENAME = "gyro_accel.csv"
 
+// Video Recording Configuration
+let FIXED_VIDEO_FPS: Int = 30
+let FIXED_VIDEO_CODEC = AVVideoCodecType.h264
+let FIXED_VIDEO_BITRATE_MULTIPLIER: Float = 4.0 // bits per pixel (more conservative)
+let FIXED_VIDEO_MAX_KEYFRAME_INTERVAL: Int = 30
+
 // MARK: - Recording Status Enum
 
 enum RosyWriterRecordingStatus: Int {
@@ -384,19 +390,19 @@ class RosyWriterCapturePipeline: NSObject {
             }
         }
         
-        let frameRate: Int32
+        // Use fixed frame rate and session preset
+        let frameRate = Int32(FIXED_VIDEO_FPS)
         var sessionPreset = AVCaptureSession.Preset.high
         
+        // Set session preset based on device capabilities, but use fixed FPS
         if ProcessInfo.processInfo.processorCount == 1 {
             if captureSession.canSetSessionPreset(.vga640x480) {
                 sessionPreset = .vga640x480
             }
-            frameRate = 15
         } else {
             if captureSession.canSetSessionPreset(.hd1280x720) {
                 sessionPreset = .hd1280x720
             }
-            frameRate = 30
         }
         
         captureSession.sessionPreset = sessionPreset
@@ -412,13 +418,47 @@ class RosyWriterCapturePipeline: NSObject {
             print("videoDevice lockForConfiguration returned error \(error)")
         }
         
-        videoCompressionSettings = videoOut.recommendedVideoSettingsForAssetWriter(writingTo: .mp4)
+        // Video compression settings will be created after video pipeline setup when dimensions are available
+        videoCompressionSettings = nil
         
         if let videoConnection = videoConnection {
             videoBufferOrientation = videoConnection.videoOrientation
             let cropFactor = videoConnection.videoScaleAndCropFactor
             print("Video scale and crop factor \(cropFactor)")
         }
+    }
+    
+    private func createFixedVideoCompressionSettings() -> [String: Any] {
+        let dimensions = videoDimensions
+        let numPixels = Int(dimensions.width) * Int(dimensions.height)
+        
+        // Use more conservative bitrate calculation
+        let bitsPerSecond = max(1000000, Int(Float(numPixels) * FIXED_VIDEO_BITRATE_MULTIPLIER))
+        
+        // Use minimal, compatible compression properties
+        let compressionProperties: [String: Any] = [
+            AVVideoAverageBitRateKey: bitsPerSecond,
+            AVVideoExpectedSourceFrameRateKey: FIXED_VIDEO_FPS,
+            AVVideoMaxKeyFrameIntervalKey: FIXED_VIDEO_MAX_KEYFRAME_INTERVAL,
+            AVVideoAllowFrameReorderingKey: false,
+            AVVideoQualityKey: 0.5,
+        ]
+
+        let videoSettings: [String: Any] = [
+            AVVideoCodecKey: FIXED_VIDEO_CODEC,
+            AVVideoWidthKey: dimensions.width,
+            AVVideoHeightKey: dimensions.height,
+            AVVideoCompressionPropertiesKey: compressionProperties
+        ]
+        
+        print("Fixed video settings:")
+        print("  - Codec: \(FIXED_VIDEO_CODEC)")
+        print("  - Dimensions: \(dimensions.width)x\(dimensions.height)")
+        print("  - FPS: \(FIXED_VIDEO_FPS)")
+        print("  - Bitrate: \(bitsPerSecond) bps (\(Float(bitsPerSecond)/1000000.0) Mbps)")
+        print("  - Keyframe interval: \(FIXED_VIDEO_MAX_KEYFRAME_INTERVAL)")
+        
+        return videoSettings
     }
     
     private func teardownCaptureSession() {
@@ -517,6 +557,10 @@ class RosyWriterCapturePipeline: NSObject {
         
         videoDimensions = CMVideoFormatDescriptionGetDimensions(inputFormatDescription)
         fx = reportLensFocalLenParams()
+        
+        // Now that we have valid dimensions, create the video compression settings
+        videoCompressionSettings = createFixedVideoCompressionSettings()
+        
         renderer.prepareForInput(withFormatDescription: inputFormatDescription, outputRetainedBufferCountHint: RETAINED_BUFFER_COUNT)
         
         if !renderer.operatesInPlace, let outputDesc = renderer.outputFormatDescription {
@@ -805,6 +849,32 @@ class RosyWriterCapturePipeline: NSObject {
             inertialRecorder.fileURL = inertialFileURL
             metadataFileURL = outputFolderURL.appendingPathComponent(VIDEO_META_FILENAME, isDirectory: false)
         }
+    }
+    
+    private func createOutputFolderURL() -> URL? {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let folderName = formatter.string(from: Date())
+        let outputFolderURL = documentsPath.appendingPathComponent(folderName, isDirectory: true)
+        
+        do {
+            try FileManager.default.createDirectory(at: outputFolderURL, withIntermediateDirectories: true, attributes: nil)
+            return outputFolderURL
+        } catch {
+            print("Failed to create output folder: \(error)")
+            return nil
+        }
+    }
+    
+    private func getAttachmentTime(_ sampleBuffer: CMSampleBuffer) -> CMTime {
+        return CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+    }
+    
+    private func computeExpectedExposureTimeAndIso(format: AVCaptureDevice.Format, oldDuration: CMTime, oldISO: Float, expectedDuration: inout CMTime, expectedISO: inout Float) {
+        // Simple implementation - in a real app you might want more sophisticated exposure calculation
+        expectedDuration = oldDuration
+        expectedISO = oldISO
     }
 }
 
