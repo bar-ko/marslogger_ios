@@ -791,10 +791,8 @@ class RosyWriterCapturePipeline: NSObject {
         }
     }
     
-    private func saveVideoToAlbum() {
-        var placeholder: PHObjectPlaceholder?
-        
-        // Save copy of video file with UUID name before adding to photo library
+    private func saveVideoToAppDirectory() {
+        // Save video file with UUID name in app directory only
         if let uuid = currentRecordingUUID {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let savedVideoURL = documentsPath.appendingPathComponent("\(uuid).mp4")
@@ -802,70 +800,29 @@ class RosyWriterCapturePipeline: NSObject {
             do {
                 try FileManager.default.copyItem(at: recordingURL, to: savedVideoURL)
                 savedVideoFileURL = savedVideoURL
-                print("Saved video copy for S3 upload: \(savedVideoURL.path)")
+                print("Saved video for S3 upload: \(savedVideoURL.path)")
             } catch {
-                print("Failed to save video copy: \(error.localizedDescription)")
+                print("Failed to save video: \(error.localizedDescription)")
             }
         }
         
-        PHPhotoLibrary.shared().performChanges({
-            let createAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: self.recordingURL)
-            placeholder = createAssetRequest?.placeholderForCreatedAsset
-        }) { [weak self] success, error in
-            guard let self = self else { return }
-            
-            try? FileManager.default.removeItem(at: self.recordingURL)
-            
-            objc_sync_enter(self)
-            defer { objc_sync_exit(self) }
-            
-            guard self.recordingStatus == .stoppingRecording else {
-                fatalError("Expected to be in StoppingRecording state")
-            }
-            
-            self.transition(toRecordingStatus: .idle, error: error)
-            
-            if success {
-                print("didFinishRecordingToOutputFileAtURL - success!")
-            } else if let error = error {
-                print("\(error)")
-            }
+        // Remove temporary file
+        try? FileManager.default.removeItem(at: recordingURL)
+        
+        objc_sync_enter(self)
+        defer { objc_sync_exit(self) }
+        
+        guard recordingStatus == .stoppingRecording else {
+            fatalError("Expected to be in StoppingRecording state")
         }
+        
+        transition(toRecordingStatus: .idle, error: nil)
+        print("Video saved to app directory - success!")
     }
     
-    private func requestAuthorizationWithRedirectionToSettings() {
-        DispatchQueue.main.async {
-            let status = PHPhotoLibrary.authorizationStatus()
-            if status == .authorized {
-                self.saveVideoToAlbum()
-            } else {
-                PHPhotoLibrary.requestAuthorization { status in
-                    if status != .authorized {
-                        let accessDescription = Bundle.main.object(forInfoDictionaryKey: "NSPhotoLibraryUsageDescription") as? String ?? ""
-                        
-                        let alertController = UIAlertController(title: accessDescription, message: "To give permissions tap on 'Change Settings' button", preferredStyle: .alert)
-                        
-                        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-                        
-                        alertController.addAction(UIAlertAction(title: "Change Settings", style: .default) { _ in
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                UIApplication.shared.open(url, options: [:], completionHandler: nil)
-                            }
-                        })
-                        
-                        // Get the top view controller to present alert
-                        DispatchQueue.main.async {
-                            if #available(iOS 13.0, *) {
-                                let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-                                windowScene?.windows.first?.rootViewController?.present(alertController, animated: true, completion: nil)
-                            } else {
-                                UIApplication.shared.keyWindow?.rootViewController?.present(alertController, animated: true, completion: nil)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    private func saveVideoAfterRecording() {
+        // Simply save video to app directory without Photos authorization
+        saveVideoToAppDirectory()
     }
     
     private func resetOutputFolder() {
@@ -965,7 +922,7 @@ extension RosyWriterCapturePipeline: MovieRecorderDelegate {
         
         self.recorder = nil
         
-        requestAuthorizationWithRedirectionToSettings()
+        saveVideoAfterRecording()
         
         print("Video finished recording with \(savedFrameTimestamps.count) timestamps and \(savedFrameIntrinsics.count) intrinsic mats and \(savedExposureDurations.count) exposure durations")
     }

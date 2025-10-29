@@ -123,4 +123,45 @@ final class S3UploadService {
     func activeUploadCount() -> Int {
         return activeTasks.count
     }
+    
+    func cleanupFiles(videoURL: URL?, inertialDataURL: URL?, jsonURL: URL?) {
+        // Clean up video file
+        if let videoURL = videoURL {
+            try? FileManager.default.removeItem(at: videoURL)
+            print("Cleaned up video file: \(videoURL.path)")
+        }
+        
+        // Clean up inertial data file and its parent folder if empty
+        if let inertialDataURL = inertialDataURL {
+            let parentFolder = inertialDataURL.deletingLastPathComponent()
+            
+            try? FileManager.default.removeItem(at: inertialDataURL)
+            print("Cleaned up inertial data file: \(inertialDataURL.path)")
+            
+            // Try to remove parent folder if it's empty
+            removeEmptyFolder(at: parentFolder)
+        }
+        
+        // Clean up JSON file
+        if let jsonURL = jsonURL {
+            try? FileManager.default.removeItem(at: jsonURL)
+            print("Cleaned up JSON file: \(jsonURL.path)")
+        }
+    }
+    
+    private func removeEmptyFolder(at folderURL: URL) {
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
+            
+            // If folder is empty, remove it
+            if contents.isEmpty {
+                try FileManager.default.removeItem(at: folderURL)
+                print("Removed empty folder: \(folderURL.path)")
+            } else {
+                print("Folder not empty, keeping: \(folderURL.path)")
+            }
+        } catch {
+            print("Could not check/remove folder \(folderURL.path): \(error.localizedDescription)")
+        }
+    }
 }

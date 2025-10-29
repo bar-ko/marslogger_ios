@@ -67,6 +67,13 @@ class RosyWriterViewController: UIViewController {
     // Current recording session UUID
     private var currentRecordingUUID: String?
     
+    // File URLs for cleanup after S3 upload
+    private var currentVideoURL: URL?
+    private var currentInertialDataURL: URL?
+    private var currentJSONURL: URL?
+    private var totalFilesToUpload = 0
+    private var completedUploads = 0
+    
     // MARK: - Lifecycle
     
     deinit {
@@ -716,6 +723,17 @@ extension RosyWriterViewController {
         
         let videoFileURL = capturePipeline?.getVideoFileURL()
         
+        // Store file URLs for cleanup
+        currentVideoURL = videoFileURL
+        currentInertialDataURL = inertialDataFile
+        
+        // Reset upload counters
+        completedUploads = 0
+        totalFilesToUpload = 1 // inertial data (JSON and video will be added separately)
+        if videoFileURL != nil {
+            totalFilesToUpload += 1 // add video if available
+        }
+        
         showUploadProgressBar()
         
         // Upload video file
@@ -783,6 +801,10 @@ extension RosyWriterViewController {
             let jsonFileURL = tempDirectory.appendingPathComponent("\(uuid).json")
             
             try jsonData.write(to: jsonFileURL)
+            
+            // Store JSON URL for cleanup
+            currentJSONURL = jsonFileURL
+            totalFilesToUpload += 1 // Add JSON to total count
             
             // Upload JSON file
             s3UploadService.uploadJSON(at: jsonFileURL, withUUID: uuid)
@@ -881,13 +903,31 @@ extension RosyWriterViewController: S3UploadDelegate {
     
     func s3Upload(_ service: S3UploadService, didCompleteUpload key: String, location: String) {
         DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
             print("S3 Upload completed for key: \(key)")
             print("Upload location: \(location)")
             
+            self.completedUploads += 1
+            
             // Check if all uploads are complete
-            if service.activeUploadCount() == 0 {
-                self?.updateUploadProgressBar(progress: 1.0, message: "Upload completed!")
-                self?.showAlert("Files successfully uploaded to S3")
+            if self.completedUploads >= self.totalFilesToUpload {
+                self.updateUploadProgressBar(progress: 1.0, message: "Upload completed!")
+                self.showAlert("Files successfully uploaded to S3")
+                
+                // Clean up local files after successful upload
+                service.cleanupFiles(
+                    videoURL: self.currentVideoURL,
+                    inertialDataURL: self.currentInertialDataURL,
+                    jsonURL: self.currentJSONURL
+                )
+                
+                // Reset file URLs
+                self.currentVideoURL = nil
+                self.currentInertialDataURL = nil
+                self.currentJSONURL = nil
+                self.completedUploads = 0
+                self.totalFilesToUpload = 0
             }
         }
     }
