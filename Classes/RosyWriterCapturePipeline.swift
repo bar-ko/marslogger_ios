@@ -899,4 +899,11 @@ extension RosyWriterCapturePipeline: MovieRecorderDelegate {
             }
         }
     }
+    
+    func movieRecorder(_ recorder: MovieRecorder, didUpdateProgress progress: Float) {
+        delegateCallbackQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.delegate?.capturePipeline(self, didUpdateSavingProgress: progress)
+        }
+    }
 }
