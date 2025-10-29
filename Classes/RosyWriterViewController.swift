@@ -64,6 +64,9 @@ class RosyWriterViewController: UIViewController {
     private var recordingTimer: Timer?
     private var recordingStartTime: Date?
     
+    // Current recording session UUID
+    private var currentRecordingUUID: String?
+    
     // MARK: - Lifecycle
     
     deinit {
@@ -297,6 +300,13 @@ class RosyWriterViewController: UIViewController {
         if recording {
             capturePipeline?.stopRecording()
         } else {
+            // Generate new UUID for this recording session
+            currentRecordingUUID = UUID().uuidString
+            print("Starting new recording session with UUID: \(currentRecordingUUID!)")
+            
+            // Set UUID in capture pipeline
+            capturePipeline?.setRecordingUUID(currentRecordingUUID!)
+            
             // Disable the idle timer while recording
             UIApplication.shared.isIdleTimerDisabled = true
             
@@ -318,9 +328,8 @@ class RosyWriterViewController: UIViewController {
     }
     
 @IBAction func exportButtonPressed(_ sender: Any) {
-        guard let videoMetadataFile = capturePipeline?.metadataFileURL,
-              let inertialDataFile = capturePipeline?.getInertialFileURL() else {
-            showAlert("No metadata files available for upload")
+        guard let inertialDataFile = capturePipeline?.getInertialFileURL() else {
+            showAlert("No inertial data file available for upload")
             return
         }
         
@@ -332,7 +341,7 @@ class RosyWriterViewController: UIViewController {
         // Show confirmation dialog
         let alert = UIAlertController(
             title: "Upload to S3",
-            message: "Upload video metadata and inertial data to AWS S3?",
+            message: "Upload video and inertial data to AWS S3?",
             preferredStyle: .alert
         )
         
@@ -699,19 +708,26 @@ extension RosyWriterViewController {
 extension RosyWriterViewController {
     
     private func startS3Upload() {
-        guard let videoMetadataFile = capturePipeline?.metadataFileURL,
-              let inertialDataFile = capturePipeline?.getInertialFileURL() else {
-            showAlert("No files available for upload")
+        guard let inertialDataFile = capturePipeline?.getInertialFileURL(),
+              let recordingUUID = currentRecordingUUID else {
+            showAlert("No files available for upload or missing recording UUID")
             return
         }
         
+        let videoFileURL = capturePipeline?.getVideoFileURL()
+        
         showUploadProgressBar()
         
-        // Upload metadata file first
-        s3UploadService.uploadMetadata(at: videoMetadataFile)
+        // Upload video file
+        if let videoURL = videoFileURL {
+            s3UploadService.uploadVideo(at: videoURL, withUUID: recordingUUID)
+        }
         
         // Upload inertial data file
-        s3UploadService.uploadInertialData(at: inertialDataFile)
+        s3UploadService.uploadInertialData(at: inertialDataFile, withUUID: recordingUUID)
+        
+        // Create and upload JSON file with session metadata
+        createAndUploadJSONMetadata(withUUID: recordingUUID)
     }
     
     private func showUploadProgressBar() {
@@ -734,6 +750,48 @@ extension RosyWriterViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 self?.hideUploadProgressBar()
             }
+        }
+    }
+    
+    private func createAndUploadJSONMetadata(withUUID uuid: String) {
+        // Create JSON metadata with session information
+        let metadata: [String: Any] = [
+            "session_uuid": uuid,
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "device_info": [
+                "model": UIDevice.current.model,
+                "system_name": UIDevice.current.systemName,
+                "system_version": UIDevice.current.systemVersion,
+                "identifier_for_vendor": UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
+            ],
+            "recording_info": [
+                "start_time": recordingStartTime?.timeIntervalSince1970 ?? 0,
+                "duration_seconds": recordingStartTime != nil ? Date().timeIntervalSince(recordingStartTime!) : 0
+            ],
+            "files": [
+                "video": "mars_data/video/\(uuid).mp4",
+                "inertial_data": "mars_data/data/\(uuid).csv",
+                "session_info": "mars_data/task/\(uuid).json"
+            ]
+        ]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: metadata, options: .prettyPrinted)
+            
+            // Create temporary file
+            let tempDirectory = FileManager.default.temporaryDirectory
+            let jsonFileURL = tempDirectory.appendingPathComponent("\(uuid).json")
+            
+            try jsonData.write(to: jsonFileURL)
+            
+            // Upload JSON file
+            s3UploadService.uploadJSON(at: jsonFileURL, withUUID: uuid)
+            
+            print("Created and uploading JSON metadata file: \(jsonFileURL.path)")
+            
+        } catch {
+            print("Failed to create JSON metadata: \(error.localizedDescription)")
+            showAlert("Failed to create session metadata")
         }
     }
 }

@@ -39,16 +39,19 @@ final class S3UploadService {
         }
     }
     
-    func uploadVideo(at fileURL: URL, withKey key: String? = nil) {
-        uploadFile(at: fileURL, withKey: key ?? generateVideoKey(from: fileURL), contentType: "video/quicktime")
+    func uploadVideo(at fileURL: URL, withUUID uuid: String) {
+        let key = "mars_data/video/\(uuid).mp4"
+        uploadFile(at: fileURL, withKey: key, contentType: "video/quicktime")
     }
     
-    func uploadMetadata(at fileURL: URL, withKey key: String? = nil) {
-        uploadFile(at: fileURL, withKey: key ?? generateMetadataKey(from: fileURL), contentType: "text/csv")
+    func uploadInertialData(at fileURL: URL, withUUID uuid: String) {
+        let key = "mars_data/data/\(uuid).csv"
+        uploadFile(at: fileURL, withKey: key, contentType: "text/csv")
     }
     
-    func uploadInertialData(at fileURL: URL, withKey key: String? = nil) {
-        uploadFile(at: fileURL, withKey: key ?? generateInertialDataKey(from: fileURL), contentType: "text/csv")
+    func uploadJSON(at fileURL: URL, withUUID uuid: String) {
+        let key = "mars_data/task/\(uuid).json"
+        uploadFile(at: fileURL, withKey: key, contentType: "application/json")
     }
     
     private func uploadFile(at fileURL: URL, withKey key: String, contentType: String) {
@@ -104,20 +107,6 @@ final class S3UploadService {
         activeTasks[key] = task
     }
     
-    private func generateVideoKey(from fileURL: URL) -> String {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        return "videos/\(timestamp)/\(fileURL.lastPathComponent)"
-    }
-    
-    private func generateMetadataKey(from fileURL: URL) -> String {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        return "metadata/\(timestamp)/\(fileURL.lastPathComponent)"
-    }
-    
-    private func generateInertialDataKey(from fileURL: URL) -> String {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        return "inertial-data/\(timestamp)/\(fileURL.lastPathComponent)"
-    }
     
     func cancelUpload(forKey key: String) {
         activeTasks[key]?.cancel()

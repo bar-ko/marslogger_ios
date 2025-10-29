@@ -64,7 +64,10 @@ class RosyWriterCapturePipeline: NSObject {
     private(set) var exposureDuration: Int64 = 0
     private(set) var autoLocked: Bool = false
     private(set) var videoDeviceInput: AVCaptureDeviceInput!
-    private(set) var metadataFileURL: URL!
+    
+    // Current recording session UUID
+    private var currentRecordingUUID: String?
+    private var savedVideoFileURL: URL?
     
     // MARK: - Private Properties
     
@@ -294,6 +297,14 @@ class RosyWriterCapturePipeline: NSObject {
     
     func getInertialFileURL() -> URL? {
         return inertialRecorder.fileURL
+    }
+    
+    func getVideoFileURL() -> URL? {
+        return savedVideoFileURL
+    }
+    
+    func setRecordingUUID(_ uuid: String) {
+        currentRecordingUUID = uuid
     }
     
     func getCurrentSpeed() -> CLLocationSpeed {
@@ -783,6 +794,20 @@ class RosyWriterCapturePipeline: NSObject {
     private func saveVideoToAlbum() {
         var placeholder: PHObjectPlaceholder?
         
+        // Save copy of video file with UUID name before adding to photo library
+        if let uuid = currentRecordingUUID {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let savedVideoURL = documentsPath.appendingPathComponent("\(uuid).mp4")
+            
+            do {
+                try FileManager.default.copyItem(at: recordingURL, to: savedVideoURL)
+                savedVideoFileURL = savedVideoURL
+                print("Saved video copy for S3 upload: \(savedVideoURL.path)")
+            } catch {
+                print("Failed to save video copy: \(error.localizedDescription)")
+            }
+        }
+        
         PHPhotoLibrary.shared().performChanges({
             let createAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: self.recordingURL)
             placeholder = createAssetRequest?.placeholderForCreatedAsset
@@ -847,7 +872,6 @@ class RosyWriterCapturePipeline: NSObject {
         if let outputFolderURL = createOutputFolderURL() {
             let inertialFileURL = outputFolderURL.appendingPathComponent(IMU_OUTPUT_FILENAME, isDirectory: false)
             inertialRecorder.fileURL = inertialFileURL
-            metadataFileURL = outputFolderURL.appendingPathComponent(VIDEO_META_FILENAME, isDirectory: false)
         }
     }
     
@@ -944,30 +968,6 @@ extension RosyWriterCapturePipeline: MovieRecorderDelegate {
         requestAuthorizationWithRedirectionToSettings()
         
         print("Video finished recording with \(savedFrameTimestamps.count) timestamps and \(savedFrameIntrinsics.count) intrinsic mats and \(savedExposureDurations.count) exposure durations")
-        
-        var mainString = "Timestamp[nanosec], fx[px], fy[px], cx[px], cy[px], exposure duration[nanosec]\n"
-        let hasIntrinsics = savedFrameIntrinsics.count > 0
-        
-        for i in 0..<savedFrameTimestamps.count {
-            let timestamp = savedFrameTimestamps[i] as! NSNumber
-            let exposureDuration = savedExposureDurations[i] as! NSNumber
-            
-            if hasIntrinsics {
-                let intrinsic3x3 = savedFrameIntrinsics[i] as! [NSNumber]
-                mainString += "\(timestamp.int64Value), \(intrinsic3x3[0]), \(intrinsic3x3[5]), \(intrinsic3x3[8]), \(intrinsic3x3[9]), \(exposureDuration.int64Value)\n"
-            } else {
-                mainString += "\(timestamp.int64Value), 1.00, 1.00, 0.50, 0.50, \(exposureDuration.int64Value)\n"
-            }
-        }
-        
-        if let settingsData = mainString.data(using: .utf8) {
-            do {
-                try settingsData.write(to: metadataFileURL, options: .atomic)
-                print("Written video metadata to \(metadataFileURL!)")
-            } catch {
-                print("Failed to record video metadata to \(metadataFileURL!)")
-            }
-        }
     }
     
     func movieRecorder(_ recorder: MovieRecorder, didUpdateProgress progress: Float) {
