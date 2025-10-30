@@ -774,23 +774,8 @@ extension RosyWriterViewController {
     private func createAndUploadJSONMetadata(withUUID uuid: String) {
         // Create JSON metadata with session information
         let metadata: [String: Any] = [
-            "session_uuid": uuid,
-            "timestamp": ISO8601DateFormatter().string(from: Date()),
-            "device_info": [
-                "model": UIDevice.current.model,
-                "system_name": UIDevice.current.systemName,
-                "system_version": UIDevice.current.systemVersion,
-                "identifier_for_vendor": UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
-            ],
-            "recording_info": [
-                "start_time": recordingStartTime?.timeIntervalSince1970 ?? 0,
-                "duration_seconds": recordingStartTime != nil ? Date().timeIntervalSince(recordingStartTime!) : 0
-            ],
-            "files": [
-                "video": "mars_data/video/\(uuid).mp4",
-                "inertial_data": "mars_data/data/\(uuid).csv",
-                "session_info": "mars_data/task/\(uuid).json"
-            ]
+                "video": "s3://\(AWSConfig.bucketName)/mars_data/video/\(uuid).mp4",
+                "data": "s3://\(AWSConfig.bucketName)/mars_data/data/\(uuid).csv",
         ]
         
         do {
