@@ -158,9 +158,11 @@ class MovieRecorder: NSObject {
 
                 // Create asset writer
                 do {
-                    self.assetWriter = try AVAssetWriter(url: self.url, fileType: .mov)
+                    self.assetWriter = try AVAssetWriter(url: self.url, fileType: .mp4)
+                    print("Created AVAssetWriter with MP4 file type for URL: \(self.url)")
                 } catch let writerError {
                     error = writerError as NSError
+                    print("Failed to create AVAssetWriter: \(writerError)")
                 }
 
                 // Setup inputs

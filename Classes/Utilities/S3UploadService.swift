@@ -41,7 +41,7 @@ final class S3UploadService {
     
     func uploadVideo(at fileURL: URL, withUUID uuid: String) {
         let key = "mars_data/video/\(uuid).mp4"
-        uploadFile(at: fileURL, withKey: key, contentType: "video/quicktime")
+        uploadFile(at: fileURL, withKey: key, contentType: "video/mp4")
     }
     
     func uploadInertialData(at fileURL: URL, withUUID uuid: String) {

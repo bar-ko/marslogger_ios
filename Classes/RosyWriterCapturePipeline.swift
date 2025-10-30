@@ -119,7 +119,7 @@ class RosyWriterCapturePipeline: NSObject {
         // Initialize renderer (using CPU renderer as default)
         self.renderer = RosyWriterCPURenderer()
         
-        self.recordingURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Movie.MP4")
+        self.recordingURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Movie.mp4")
         
         self.inertialRecorder = InertialRecorder()
         self.videoTimeConverter = VideoTimeConverter()
@@ -452,6 +452,7 @@ class RosyWriterCapturePipeline: NSObject {
             AVVideoMaxKeyFrameIntervalKey: FIXED_VIDEO_MAX_KEYFRAME_INTERVAL,
             AVVideoAllowFrameReorderingKey: false,
             AVVideoQualityKey: 0.5,
+            AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel
         ]
 
         let videoSettings: [String: Any] = [

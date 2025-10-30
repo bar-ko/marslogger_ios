@@ -29,6 +29,14 @@ func secDoubleToNanoString(_ time: Double) -> String {
     return String(format: "%.0f%09.0f", integral, fractional)
 }
 
+func secDoubleToDateTimeString(_ time: Double) -> String {
+    let date = Date(timeIntervalSince1970: time)
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSSSS"
+    dateFormatter.timeZone = TimeZone.current
+    return dateFormatter.string(from: date)
+}
+
 func CMTimeForNSDate(_ date: Date) -> CMTime {
     let now = CMClockGetTime(CMClockGetHostTimeClock())
     let elapsed = -date.timeIntervalSinceNow // this will be a negative number if date was in the past (it should be).

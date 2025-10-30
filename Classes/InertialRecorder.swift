@@ -249,9 +249,10 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
         var mainString = ""
         var accelIndex = 0
         var gpsIndex = 0
+        // mainString +=
+        //     "datetime, gyroX, gyroY, gyroZ, accX, accY, accZ, lat, lon, speed\n" with lat, lon
         mainString +=
-            "Timestamp[nanosec], gx[rad/s], gy[rad/s], gz[rad/s], ax[m/s^2], ay[m/s^2], az[m/s^2], latitude[deg], longitude[deg], speed[m/s]\n"
-
+            "datetime,gyroX,gyroY,gyroZ,accX,accY,accZ,speed\n"
         // Check if arrays are empty to avoid out of bounds access
         guard !mutableGyroCopy.isEmpty && !mutableAccelCopy.isEmpty else {
             return mainString
@@ -280,31 +281,31 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
                 if let nwGPS = nwGPS {
                     mainString += String(
                         format:
-                            "%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n",
-                        secDoubleToNanoString(nwg.time),
+                            "%@,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",
+                        secDoubleToDateTimeString(nwg.time),
                         nwg.x,
                         nwg.y,
                         nwg.z,
                         nwa.x,
                         nwa.y,
                         nwa.z,
-                        nwGPS.latitude,
-                        nwGPS.longitude,
+                    //    nwGPS.latitude,
+                    //    nwGPS.longitude,
                         nwGPS.speed
                     )
                 } else {
                     mainString += String(
                         format:
-                            "%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n",
-                        secDoubleToNanoString(nwg.time),
+                            "%@,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",
+                        secDoubleToDateTimeString(nwg.time),
                         nwg.x,
                         nwg.y,
                         nwg.z,
                         nwa.x,
                         nwa.y,
                         nwa.z,
-                        0.0,
-                        0.0,
+                        // 0.0,
+                        // 0.0,
                         0.0
                     )
                 }
@@ -336,31 +337,31 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
                     if let nwGPS = nwGPS {
                         mainString += String(
                             format:
-                                "%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n",
-                            secDoubleToNanoString(nwg.time),
+                                "%@,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",
+                            secDoubleToDateTimeString(nwg.time),
                             nwg.x,
                             nwg.y,
                             nwg.z,
                             nwa1.x,
                             nwa1.y,
                             nwa1.z,
-                            nwGPS.latitude,
-                            nwGPS.longitude,
+                            // nwGPS.latitude,
+                            // nwGPS.longitude,
                             nwGPS.speed
                         )
                     } else {
                         mainString += String(
                             format:
-                                "%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n",
-                            secDoubleToNanoString(nwg.time),
+                                "%@,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",
+                            secDoubleToDateTimeString(nwg.time),
                             nwg.x,
                             nwg.y,
                             nwg.z,
                             nwa1.x,
                             nwa1.y,
                             nwa1.z,
-                            0.0,
-                            0.0,
+                            // 0.0,
+                            // 0.0,
                             0.0
                         )
                     }
@@ -391,31 +392,31 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
                     if let nwGPS = nwGPS {
                         mainString += String(
                             format:
-                                "%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n",
-                            secDoubleToNanoString(nwg.time),
+                                "%@,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",
+                            secDoubleToDateTimeString(nwg.time),
                             nwg.x,
                             nwg.y,
                             nwg.z,
                             interpax,
                             interpay,
                             interpaz,
-                            nwGPS.latitude,
-                            nwGPS.longitude,
+                            // nwGPS.latitude,
+                            // nwGPS.longitude,
                             nwGPS.speed
                         )
                     } else {
                         mainString += String(
                             format:
-                                "%@, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f, %.15f\n",
-                            secDoubleToNanoString(nwg.time),
+                                "%@,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",
+                            secDoubleToDateTimeString(nwg.time),
                             nwg.x,
                             nwg.y,
                             nwg.z,
                             interpax,
                             interpay,
                             interpaz,
-                            0.0,
-                            0.0,
+                            // 0.0,
+                            // 0.0,
                             0.0
                         )
                     }
@@ -450,7 +451,7 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
                 if let rawData = rawAccelGyroData {
                     for nw in rawData {
                         mainString += String(
-                            format: "%.7f, %.5f, %.5f, %.5f, %d\n",
+                            format: "%.7f,%.5f,%.5f,%.5f,%d\n",
                             nw.time,
                             nw.x,
                             nw.y,
@@ -548,9 +549,12 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
                     nw.isGyro = false
                     // The time stamp is the amount of time in seconds since the device booted.
                     nw.time = accelData.timestamp
-                    nw.x = -accel.x * GRAVITY
-                    nw.y = -accel.y * GRAVITY
-                    nw.z = -accel.z * GRAVITY
+                    // nw.x = -accel.x * GRAVITY
+                    // nw.y = -accel.y * GRAVITY
+                    // nw.z = -accel.z * GRAVITY
+                    nw.x = -accel.x 
+                    nw.y = -accel.y
+                    nw.z = -accel.z
 
                     self.rawAccelGyroData?.append(nw)
                 }
