@@ -83,6 +83,9 @@
 		9539407B2E980AB800EB3E20 /* OpenGLPixelBufferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */; };
 		9539407C2E980AB800EB3E20 /* CameraControlFunctions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953940782E980AB800EB3E20 /* CameraControlFunctions.swift */; };
 		9539407E2E99068C00EB3E20 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9539407D2E99068C00EB3E20 /* main.swift */; };
+		955299CF2F03ECD0005B23DD /* SensorRingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 955299CC2F03ECD0005B23DD /* SensorRingBuffer.swift */; };
+		955299D02F03ECD0005B23DD /* SensorOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 955299CD2F03ECD0005B23DD /* SensorOverlayView.swift */; };
+		955299D12F03ECD0005B23DD /* MiniTimeSeriesChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 955299CE2F03ECD0005B23DD /* MiniTimeSeriesChartView.swift */; };
 		95AD9D422EB2871500ED8066 /* AWSClientRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 95AD9D412EB2871500ED8066 /* AWSClientRuntime */; };
 		95AD9D442EB2871500ED8066 /* AWSS3 in Frameworks */ = {isa = PBXBuildFile; productRef = 95AD9D432EB2871500ED8066 /* AWSS3 */; };
 		95AD9D472EB28A5D00ED8066 /* AWSConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */; };
@@ -158,6 +161,9 @@
 		953940772E980AB800EB3E20 /* OpenGLPixelBufferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenGLPixelBufferView.swift; path = Classes/Utilities/OpenGLPixelBufferView.swift; sourceTree = "<group>"; };
 		953940782E980AB800EB3E20 /* CameraControlFunctions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CameraControlFunctions.swift; path = Classes/Utilities/CameraControlFunctions.swift; sourceTree = "<group>"; };
 		9539407D2E99068C00EB3E20 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		955299CC2F03ECD0005B23DD /* SensorRingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SensorRingBuffer.swift; path = Classes/Utilities/SensorRingBuffer.swift; sourceTree = "<group>"; };
+		955299CD2F03ECD0005B23DD /* SensorOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SensorOverlayView.swift; path = Classes/Utilities/SensorOverlayView.swift; sourceTree = "<group>"; };
+		955299CE2F03ECD0005B23DD /* MiniTimeSeriesChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MiniTimeSeriesChartView.swift; path = Classes/Utilities/MiniTimeSeriesChartView.swift; sourceTree = "<group>"; };
 		95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AWSConfig.swift; path = Classes/Utilities/AWSConfig.swift; sourceTree = "<group>"; };
 		95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = S3UploadService.swift; path = Classes/Utilities/S3UploadService.swift; sourceTree = "<group>"; };
 		95AD9D4B2EB2A03500ED8066 /* secrets.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = secrets.json; sourceTree = "<group>"; };
@@ -283,6 +289,9 @@
 		6F90DDCA1395CAAA00125BDA = {
 			isa = PBXGroup;
 			children = (
+				955299CE2F03ECD0005B23DD /* MiniTimeSeriesChartView.swift */,
+				955299CD2F03ECD0005B23DD /* SensorOverlayView.swift */,
+				955299CC2F03ECD0005B23DD /* SensorRingBuffer.swift */,
 				95AD9D4B2EB2A03500ED8066 /* secrets.json */,
 				95AD9D452EB28A5D00ED8066 /* AWSConfig.swift */,
 				95AD9D462EB28A5D00ED8066 /* S3UploadService.swift */,
@@ -629,6 +638,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				955299CF2F03ECD0005B23DD /* SensorRingBuffer.swift in Sources */,
+				955299D02F03ECD0005B23DD /* SensorOverlayView.swift in Sources */,
+				955299D12F03ECD0005B23DD /* MiniTimeSeriesChartView.swift in Sources */,
 				95AD9D472EB28A5D00ED8066 /* AWSConfig.swift in Sources */,
 				95AD9D482EB28A5D00ED8066 /* S3UploadService.swift in Sources */,
 				953940792E980AB800EB3E20 /* MovieRecorder.swift in Sources */,
