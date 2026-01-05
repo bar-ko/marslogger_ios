@@ -28,6 +28,10 @@ class RosyWriterViewController: UIViewController {
     @IBOutlet weak var speedMphLabel: UILabel!
     @IBOutlet weak var speedKmLabel: UILabel!
     @IBOutlet weak var exposureDurationLabel: UILabel!
+    
+    // GPS status labels (created programmatically)
+    private var gpsStatusLabel: UILabel?
+    private var gpsCoordinatesLabel: UILabel?
     @IBOutlet weak var lockAutoLabel: UILabel!
     @IBOutlet weak var exportButton: UIBarButtonItem!
     @IBOutlet weak var uploadButton: UIBarButtonItem!
@@ -42,6 +46,24 @@ class RosyWriterViewController: UIViewController {
     private var uploadProgressLabel: UILabel?
     private var uploadProgressContainerView: UIView?
     private let s3UploadService = S3UploadService.shared
+    
+    // Sensor visualization overlay
+    private var sensorOverlayView: SensorOverlayView?
+    
+    // Overlay container structure
+    private var overlayContainer: UIView?
+    private var sensorBlock: UIView?
+    private var hudBlock: UIView?
+    private var controlsBlock: UIView?
+    
+    // Layout constraints for dynamic updates
+    private var hudBlockTopConstraint: NSLayoutConstraint?
+    
+    // Constraint sets for portrait/landscape
+    private var portraitConstraints: [NSLayoutConstraint] = []
+    private var landscapeConstraints: [NSLayoutConstraint] = []
+    private var currentConstraints: [NSLayoutConstraint] = []
+    private var pendingSize: CGSize?
     
     // MARK: - Properties
     
@@ -127,6 +149,8 @@ class RosyWriterViewController: UIViewController {
         let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTapFrom(_:)))
         tapGestureRecognizer.numberOfTouchesRequired = 1
         tapGestureRecognizer.numberOfTapsRequired = 1
+        // Don't cancel touches in view - let toolbar buttons receive their touches
+        tapGestureRecognizer.cancelsTouchesInView = false
         preview.addGestureRecognizer(tapGestureRecognizer)
         tapGestureRecognizer.delegate = self
         addDefaultFocusBox() // add focus box to view
@@ -143,6 +167,9 @@ class RosyWriterViewController: UIViewController {
         
         // Setup S3 upload service
         s3UploadService.delegate = self
+        
+        // Overlay structure will be set up in viewDidLayoutSubviews
+        // to ensure storyboard outlets are connected first
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -152,6 +179,53 @@ class RosyWriterViewController: UIViewController {
         capturePipeline?.startRunning()
 
         labelTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(updateLabels), userInfo: nil, repeats: true)
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Ensure overlay structure is set up after layout (only once)
+        if overlayContainer == nil {
+            setupOverlayStructure()
+        }
+        
+        // Update preview layer frame on rotation
+        updatePreviewLayerFrame()
+    }
+    
+    private func updatePreviewLayerFrame() {
+        // Update preview layer if it exists
+        if let previewLayer = captureVideoPreviewLayer {
+            let bounds = preview.layer.bounds
+            previewLayer.bounds = bounds
+            previewLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+            
+            #if DEBUG
+                print("Preview layer updated: bounds=\(bounds), frame=\(previewLayer.frame)")
+            #endif
+        }
+        
+        // Update OpenGL preview view frame and transform
+        if let previewView = previewView {
+            previewView.frame = view.bounds
+            
+            // Update transform based on current orientation
+            let currentInterfaceOrientation: UIInterfaceOrientation
+            if #available(iOS 13.0, *) {
+                currentInterfaceOrientation = view.window?.windowScene?.interfaceOrientation ?? .portrait
+            } else {
+                currentInterfaceOrientation = UIApplication.shared.statusBarOrientation
+            }
+            
+            if let videoOrientation = videoOrientation(from: currentInterfaceOrientation),
+               let transform = capturePipeline?.transform(fromVideoBufferOrientationTo: videoOrientation, withAutoMirroring: true) {
+                previewView.transform = transform
+                
+                #if DEBUG
+                print("Preview view transform updated for orientation: \(currentInterfaceOrientation.rawValue)")
+                #endif
+            }
+        }
     }
 
     
@@ -169,7 +243,7 @@ class RosyWriterViewController: UIViewController {
     }
     
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        return .portrait
+        return .all
     }
     
     override var prefersStatusBarHidden: Bool {
@@ -304,15 +378,26 @@ class RosyWriterViewController: UIViewController {
     // MARK: - UI Actions
     
     @IBAction func toggleRecording(_ sender: Any) {
+        print("toggleRecording called, recording=\(recording)")
+        
         if recording {
+            print("Stopping recording...")
             capturePipeline?.stopRecording()
         } else {
+            print("Starting recording...")
+            
+            guard let pipeline = capturePipeline else {
+                print("ERROR: capturePipeline is nil")
+                showAlert("Camera pipeline not initialized")
+                return
+            }
+            
             // Generate new UUID for this recording session
             currentRecordingUUID = UUID().uuidString
             print("Starting new recording session with UUID: \(currentRecordingUUID!)")
             
             // Set UUID in capture pipeline
-            capturePipeline?.setRecordingUUID(currentRecordingUUID!)
+            pipeline.setRecordingUUID(currentRecordingUUID!)
             
             // Disable the idle timer while recording
             UIApplication.shared.isIdleTimerDisabled = true
@@ -322,15 +407,42 @@ class RosyWriterViewController: UIViewController {
                 backgroundRecordingID = UIApplication.shared.beginBackgroundTask(expirationHandler: {})
             }
             
+            // Ensure recording orientation is set correctly before starting
+            let deviceOrientation = UIDevice.current.orientation
+            if deviceOrientation.isPortrait || deviceOrientation.isLandscape {
+                if let videoOrientation = videoOrientation(from: deviceOrientation) {
+                    pipeline.recordingOrientation = videoOrientation
+                    print("Set recording orientation from device: \(deviceOrientation.rawValue) -> \(videoOrientation.rawValue)")
+                } else {
+                    print("WARNING: Could not convert device orientation \(deviceOrientation.rawValue)")
+                }
+            } else {
+                // Fallback to current interface orientation if device orientation is unknown
+                var currentInterfaceOrientation: UIInterfaceOrientation = .portrait
+                if #available(iOS 13.0, *) {
+                    currentInterfaceOrientation = view.window?.windowScene?.interfaceOrientation ?? .portrait
+                } else {
+                    currentInterfaceOrientation = UIApplication.shared.statusBarOrientation
+                }
+                if let videoOrientation = videoOrientation(from: currentInterfaceOrientation) {
+                    pipeline.recordingOrientation = videoOrientation
+                    print("Set recording orientation from interface: \(currentInterfaceOrientation.rawValue) -> \(videoOrientation.rawValue)")
+                } else {
+                    print("WARNING: Could not convert interface orientation \(currentInterfaceOrientation.rawValue)")
+                }
+            }
+            
             recordButton.isEnabled = false // re-enabled once recording has finished starting
             recordButton.title = "Stop"
             
-            capturePipeline?.startRecording()
+            print("Calling capturePipeline.startRecording()...")
+            pipeline.startRecording()
             
             // Start recording timer
             startRecordingTimer()
             
             recording = true
+            print("Recording state set to true")
         }
     }
     
@@ -414,7 +526,8 @@ class RosyWriterViewController: UIViewController {
             currentInterfaceOrientation = UIApplication.shared.statusBarOrientation
         }
         
-        if let transform = capturePipeline?.transform(fromVideoBufferOrientationTo: AVCaptureVideoOrientation(rawValue: currentInterfaceOrientation.rawValue)!, withAutoMirroring: true) {
+        if let videoOrientation = videoOrientation(from: currentInterfaceOrientation),
+           let transform = capturePipeline?.transform(fromVideoBufferOrientationTo: videoOrientation, withAutoMirroring: true) {
             previewView?.transform = transform
         }
         
@@ -535,13 +648,469 @@ class RosyWriterViewController: UIViewController {
         containerView.isHidden = true
     }
     
+    private func setupOverlayStructure() {
+        // Create main overlay container with touch passthrough for toolbar
+        let container = TouchPassthroughView()
+        container.backgroundColor = .clear
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.toolbarHeight = 52 // Height of toolbar at bottom
+        container.passthroughParent = view // Reference to parent view for toolbar access
+        overlayContainer = container
+        // Add overlay on top so HUD elements are visible, but point(inside:with:) will exclude toolbar area
+        view.addSubview(container)
+        
+        // Create three block containers
+        let sensorBlockView = UIView()
+        sensorBlockView.backgroundColor = .clear
+        sensorBlockView.translatesAutoresizingMaskIntoConstraints = false
+        sensorBlock = sensorBlockView
+        
+        let hudBlockView = UIView()
+        hudBlockView.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        hudBlockView.layer.cornerRadius = 8.0
+        hudBlockView.translatesAutoresizingMaskIntoConstraints = false
+        hudBlock = hudBlockView
+        
+        let controlsBlockView = UIView()
+        controlsBlockView.backgroundColor = .clear
+        controlsBlockView.translatesAutoresizingMaskIntoConstraints = false
+        controlsBlockView.isUserInteractionEnabled = false // Pass through to toolbar
+        controlsBlock = controlsBlockView
+        
+        // Add blocks to container
+        container.addSubview(sensorBlockView)
+        container.addSubview(hudBlockView)
+        container.addSubview(controlsBlockView)
+        
+        // Setup sensor block with sensor overlay
+        setupSensorBlock(in: sensorBlockView)
+        
+        // Setup HUD block with labels
+        setupHudBlock(in: hudBlockView)
+        
+        // Setup controls block (toolbar is already in storyboard, but we'll ensure it doesn't overlap)
+        setupControlsBlock(in: controlsBlockView)
+        
+        // Create constraint sets for portrait and landscape
+        setupPortraitConstraints(container: container, sensorBlock: sensorBlockView, hudBlock: hudBlockView, controlsBlock: controlsBlockView)
+        setupLandscapeConstraints(container: container, sensorBlock: sensorBlockView, hudBlock: hudBlockView, controlsBlock: controlsBlockView)
+        
+        #if DEBUG
+        print("Overlay structure setup complete: portraitConstraints=\(portraitConstraints.count), landscapeConstraints=\(landscapeConstraints.count)")
+        #endif
+        
+        // Apply initial constraints based on current orientation
+        updateConstraintsForOrientation(usingSize: nil)
+    }
+    
+    private func setupPortraitConstraints(container: UIView, sensorBlock: UIView, hudBlock: UIView, controlsBlock: UIView) {
+        portraitConstraints = [
+            // Container fills the view
+            container.topAnchor.constraint(equalTo: view.topAnchor),
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            container.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            // Sensor block at top
+            sensorBlock.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            sensorBlock.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 0),
+            sensorBlock.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 0),
+            
+            // HUD block below sensor block
+            hudBlock.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            hudBlock.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            
+            // Controls block at bottom (above toolbar)
+            controlsBlock.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -52),
+            controlsBlock.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            controlsBlock.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            controlsBlock.heightAnchor.constraint(equalToConstant: 0),
+            
+            // Ensure HUD block doesn't overlap controls
+            hudBlock.bottomAnchor.constraint(lessThanOrEqualTo: controlsBlock.topAnchor, constant: -8)
+        ]
+        
+        // Store HUD block top constraint for dynamic updates (portrait)
+        hudBlockTopConstraint = hudBlock.topAnchor.constraint(equalTo: sensorBlock.bottomAnchor, constant: 8)
+    }
+    
+    private func setupLandscapeConstraints(container: UIView, sensorBlock: UIView, hudBlock: UIView, controlsBlock: UIView) {
+        // Landscape layout: side column on right with HUD, sensors over video on left
+        // Toolbar remains at bottom but is accessible
+        let sideColumnWidth: CGFloat = 220 // Adjustable: side column width (tweak this value)
+        
+        #if DEBUG
+        print("Setting up landscape constraints with sideColumnWidth=\(sideColumnWidth)")
+        #endif
+        
+        landscapeConstraints = [
+            // Container fills the view
+            container.topAnchor.constraint(equalTo: view.topAnchor),
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            container.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            // Sensor block: top-left over video (compact but enough space for charts)
+            // Charts need: toggle(28) + spacing(8) + accel(80) + spacing(4) + gyro(80) + padding(8) = 208pt minimum
+            sensorBlock.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            sensorBlock.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 8),
+            sensorBlock.widthAnchor.constraint(equalToConstant: 280), // Fixed width for landscape
+            sensorBlock.heightAnchor.constraint(equalToConstant: 220), // Fixed height to accommodate both charts
+            
+            // HUD block: right side column, top
+            hudBlock.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            hudBlock.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            hudBlock.widthAnchor.constraint(equalToConstant: sideColumnWidth),
+            hudBlock.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -60), // Above toolbar
+            
+            // Controls block: spacer (toolbar handles buttons in storyboard)
+            controlsBlock.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -52),
+            controlsBlock.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            controlsBlock.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            controlsBlock.heightAnchor.constraint(equalToConstant: 0)
+        ]
+    }
+    
+    private func updateConstraintsForOrientation(usingSize size: CGSize? = nil) {
+        // Determine current orientation - use provided size or view bounds
+        let sizeToCheck = size ?? view.bounds.size
+        let isLandscape = sizeToCheck.width > sizeToCheck.height
+        
+        #if DEBUG
+        print("updateConstraintsForOrientation: size=\(sizeToCheck), isLandscape=\(isLandscape), currentConstraints.count=\(currentConstraints.count)")
+        #endif
+        
+        // Deactivate current constraints
+        NSLayoutConstraint.deactivate(currentConstraints)
+        
+        // Activate appropriate constraint set
+        if isLandscape {
+            currentConstraints = landscapeConstraints
+            NSLayoutConstraint.activate(landscapeConstraints)
+            
+            // Update HUD top constraint for landscape (always at top of side column)
+            if let hudBlock = hudBlock {
+                hudBlockTopConstraint?.isActive = false
+                hudBlockTopConstraint = hudBlock.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8)
+                hudBlockTopConstraint?.isActive = true
+            }
+        } else {
+            currentConstraints = portraitConstraints
+            NSLayoutConstraint.activate(portraitConstraints)
+            
+            // Restore portrait HUD constraint based on sensor visibility
+            if let hudBlock = hudBlock, let sensorBlock = sensorBlock, let sensorOverlay = sensorOverlayView {
+                hudBlockTopConstraint?.isActive = false
+                if sensorOverlay.isVisible {
+                    hudBlockTopConstraint = hudBlock.topAnchor.constraint(equalTo: sensorBlock.bottomAnchor, constant: 8)
+                } else {
+                    hudBlockTopConstraint = hudBlock.topAnchor.constraint(equalTo: sensorOverlay.toggleButton.bottomAnchor, constant: 8)
+                }
+                hudBlockTopConstraint?.isActive = true
+            }
+        }
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        
+        #if DEBUG
+        let isLandscape = size.width > size.height
+        print("viewWillTransition: size=\(size), isLandscape=\(isLandscape)")
+        #endif
+        
+        // Store size for use in updateConstraintsForOrientation
+        pendingSize = size
+        
+        coordinator.animate(alongsideTransition: { [weak self] _ in
+            guard let self = self else { return }
+            #if DEBUG
+            print("Animating constraint update")
+            #endif
+            self.updateConstraintsForOrientation(usingSize: size)
+            self.view.layoutIfNeeded()
+        }, completion: { [weak self] _ in
+            #if DEBUG
+            print("Rotation animation completed")
+            #endif
+            self?.pendingSize = nil
+            self?.updatePreviewLayerFrame()
+        })
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        
+        #if DEBUG
+        print("traitCollectionDidChange: horizontal=\(traitCollection.horizontalSizeClass.rawValue), vertical=\(traitCollection.verticalSizeClass.rawValue)")
+        #endif
+        
+        if traitCollection.horizontalSizeClass != previousTraitCollection?.horizontalSizeClass ||
+           traitCollection.verticalSizeClass != previousTraitCollection?.verticalSizeClass {
+            #if DEBUG
+                print("Size class changed, updating constraints")
+            #endif
+            updateConstraintsForOrientation(usingSize: nil)
+        }
+        
+        // Also check orientation change via view bounds
+        if let previous = previousTraitCollection {
+            let wasLandscape = previous.horizontalSizeClass == .regular || (view.bounds.width > view.bounds.height)
+            let isLandscape = traitCollection.horizontalSizeClass == .regular || (view.bounds.width > view.bounds.height)
+            if wasLandscape != isLandscape {
+                #if DEBUG
+                print("Orientation changed via trait collection, updating constraints")
+                #endif
+                updateConstraintsForOrientation(usingSize: nil)
+            }
+        }
+    }
+    
+    private func updateHudBlockPosition(sensorsVisible: Bool) {
+        guard let hudBlockView = hudBlock,
+              let sensorBlockView = sensorBlock,
+              let hudTopConstraint = hudBlockTopConstraint,
+              let sensorOverlay = sensorOverlayView else { return }
+        
+        // Check if we're in landscape
+        let isLandscape = view.bounds.width > view.bounds.height
+        
+        // Deactivate current constraint
+        hudTopConstraint.isActive = false
+        
+        // Create new constraint based on visibility and orientation
+        if isLandscape {
+            // Landscape: HUD always at top of side column (handled by landscape constraints)
+            hudBlockTopConstraint = hudBlockView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8)
+        } else {
+            // Portrait: HUD position depends on sensor visibility
+            if sensorsVisible {
+                // Sensors visible: HUD below sensor block
+                hudBlockTopConstraint = hudBlockView.topAnchor.constraint(equalTo: sensorBlockView.bottomAnchor, constant: 8)
+            } else {
+                // Sensors hidden: HUD positioned below toggle button
+                hudBlockTopConstraint = hudBlockView.topAnchor.constraint(equalTo: sensorOverlay.toggleButton.bottomAnchor, constant: 8)
+            }
+        }
+        
+        // Activate new constraint
+        hudBlockTopConstraint?.isActive = true
+        
+        // Animate the change
+        UIView.animate(withDuration: 0.3) {
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    private func setupSensorBlock(in container: UIView) {
+        guard let capturePipeline = capturePipeline else { return }
+        
+        guard let accelBuffer = capturePipeline.getAccelVisualizationBuffer(),
+              let gyroBuffer = capturePipeline.getGyroVisualizationBuffer() else {
+            print("Failed to get visualization buffers")
+            return
+        }
+        
+        // Create sensor overlay view
+        sensorOverlayView = SensorOverlayView(
+            frame: .zero,
+            accelBuffer: accelBuffer,
+            gyroBuffer: gyroBuffer
+        )
+        sensorOverlayView?.delegate = self
+        sensorOverlayView?.translatesAutoresizingMaskIntoConstraints = false
+        
+        guard let overlayView = sensorOverlayView else { return }
+        
+        container.addSubview(overlayView)
+        
+        // Constraints for overlay view - fills container
+        // Height constraint removed as it conflicts with landscape constraints
+        NSLayoutConstraint.activate([
+            overlayView.topAnchor.constraint(equalTo: container.topAnchor),
+            overlayView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            overlayView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            overlayView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+    }
+    
+    private func setupHudBlock(in container: UIView) {
+        // Remove labels from their current parent and add to HUD block
+        // Labels are IBOutlets from storyboard, so we need to handle them carefully
+        
+        // Convert labels to use AutoLayout
+        framerateLabel.translatesAutoresizingMaskIntoConstraints = false
+        dimensionsLabel.translatesAutoresizingMaskIntoConstraints = false
+        recordTimeLabel.translatesAutoresizingMaskIntoConstraints = false
+        exposureDurationLabel.translatesAutoresizingMaskIntoConstraints = false
+        lockAutoLabel.translatesAutoresizingMaskIntoConstraints = false
+        speedMphLabel.translatesAutoresizingMaskIntoConstraints = false
+        speedKmLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Remove from current parent if they're already in view hierarchy
+        if framerateLabel.superview != nil {
+            framerateLabel.removeFromSuperview()
+        }
+        if dimensionsLabel.superview != nil {
+            dimensionsLabel.removeFromSuperview()
+        }
+        if recordTimeLabel.superview != nil {
+            recordTimeLabel.removeFromSuperview()
+        }
+        if exposureDurationLabel.superview != nil {
+            exposureDurationLabel.removeFromSuperview()
+        }
+        if lockAutoLabel.superview != nil {
+            lockAutoLabel.removeFromSuperview()
+        }
+        if speedMphLabel.superview != nil {
+            speedMphLabel.removeFromSuperview()
+        }
+        if speedKmLabel.superview != nil {
+            speedKmLabel.removeFromSuperview()
+        }
+        
+        // Create GPS status labels
+        let gpsStatus = UILabel()
+        gpsStatus.text = "GPS: Initializing..."
+        gpsStatus.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        gpsStatus.textColor = .white
+        gpsStatus.translatesAutoresizingMaskIntoConstraints = false
+        gpsStatusLabel = gpsStatus
+        
+        let gpsCoords = UILabel()
+        gpsCoords.text = "GPS: No fix"
+        gpsCoords.font = UIFont.systemFont(ofSize: 12, weight: .regular)
+        gpsCoords.textColor = .lightGray
+        gpsCoords.numberOfLines = 0
+        gpsCoords.translatesAutoresizingMaskIntoConstraints = false
+        gpsCoordinatesLabel = gpsCoords
+        
+        // Add to HUD block container
+        container.addSubview(framerateLabel)
+        container.addSubview(dimensionsLabel)
+        container.addSubview(recordTimeLabel)
+        container.addSubview(exposureDurationLabel)
+        container.addSubview(lockAutoLabel)
+        container.addSubview(speedMphLabel)
+        container.addSubview(speedKmLabel)
+        container.addSubview(gpsStatus)
+        container.addSubview(gpsCoords)
+        
+        // Adjust label font sizes for compact HUD block
+        framerateLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        dimensionsLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        exposureDurationLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        lockAutoLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        recordTimeLabel.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+        speedMphLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        speedKmLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        
+        // Layout labels vertically with padding
+        NSLayoutConstraint.activate([
+            // FPS label
+            framerateLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+            framerateLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            framerateLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            // Dimensions label
+            dimensionsLabel.topAnchor.constraint(equalTo: framerateLabel.bottomAnchor, constant: 4),
+            dimensionsLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            dimensionsLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            // Exposure duration label
+            exposureDurationLabel.topAnchor.constraint(equalTo: dimensionsLabel.bottomAnchor, constant: 4),
+            exposureDurationLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            exposureDurationLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            // Lock auto label
+            lockAutoLabel.topAnchor.constraint(equalTo: exposureDurationLabel.bottomAnchor, constant: 4),
+            lockAutoLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            lockAutoLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            // Recording time label
+            recordTimeLabel.topAnchor.constraint(equalTo: lockAutoLabel.bottomAnchor, constant: 4),
+            recordTimeLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            recordTimeLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            // Speed labels
+            speedMphLabel.topAnchor.constraint(equalTo: recordTimeLabel.bottomAnchor, constant: 4),
+            speedMphLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            speedMphLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            speedKmLabel.topAnchor.constraint(equalTo: speedMphLabel.bottomAnchor, constant: 4),
+            speedKmLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            speedKmLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            // GPS status label
+            gpsStatus.topAnchor.constraint(equalTo: speedKmLabel.bottomAnchor, constant: 4),
+            gpsStatus.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            gpsStatus.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            
+            // GPS coordinates label
+            gpsCoords.topAnchor.constraint(equalTo: gpsStatus.bottomAnchor, constant: 2),
+            gpsCoords.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            gpsCoords.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+            gpsCoords.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8)
+        ])
+    }
+    
+    private func setupControlsBlock(in container: UIView) {
+        // Controls block is a spacer to ensure toolbar doesn't overlap
+        // The toolbar is already positioned in the storyboard at the bottom
+        // This block just reserves space
+    }
+    
     @objc private func deviceOrientationDidChange() {
         let deviceOrientation = UIDevice.current.orientation
         
         // Update the recording orientation if the device changes to portrait or landscape orientation (but not face up/down)
         if deviceOrientation.isPortrait || deviceOrientation.isLandscape {
-            capturePipeline?.recordingOrientation = AVCaptureVideoOrientation(rawValue: deviceOrientation.rawValue)!
+            if let videoOrientation = videoOrientation(from: deviceOrientation) {
+                capturePipeline?.recordingOrientation = videoOrientation
+            }
         }
+        
+        // Update overlay layout for orientation changes
+        updateOverlayLayoutForOrientation()
+    }
+    
+    // Safe conversion from UIDeviceOrientation to AVCaptureVideoOrientation
+    private func videoOrientation(from deviceOrientation: UIDeviceOrientation) -> AVCaptureVideoOrientation? {
+        switch deviceOrientation {
+        case .portrait:
+            return .portrait
+        case .portraitUpsideDown:
+            return .portraitUpsideDown
+        case .landscapeLeft:
+            return .landscapeRight  // Note: camera sensor is rotated 180 degrees
+        case .landscapeRight:
+            return .landscapeLeft   // Note: camera sensor is rotated 180 degrees
+        default:
+            return nil
+        }
+    }
+    
+    // Safe conversion from UIInterfaceOrientation to AVCaptureVideoOrientation
+    private func videoOrientation(from interfaceOrientation: UIInterfaceOrientation) -> AVCaptureVideoOrientation? {
+        switch interfaceOrientation {
+        case .portrait:
+            return .portrait
+        case .portraitUpsideDown:
+            return .portraitUpsideDown
+        case .landscapeLeft:
+            return .landscapeLeft
+        case .landscapeRight:
+            return .landscapeRight
+        default:
+            return nil
+        }
+    }
+    
+    private func updateOverlayLayoutForOrientation() {
+        // The AutoLayout constraints will automatically adjust
+        // But we can add any orientation-specific adjustments here if needed
+        view.setNeedsLayout()
     }
     
     @objc private func updateLabels() {
@@ -557,9 +1126,36 @@ class RosyWriterViewController: UIViewController {
         exposureDurationLabel.text = exposureDurationString
 
         let currentSpeed = capturePipeline.getCurrentSpeed()
+        print("HUD Speed Update: \(String(format: "%.2f", currentSpeed)) m/s, GPS Status: \(capturePipeline.getGPSStatus()), Updates: \(capturePipeline.getGPSUpdateCount())")
         if previousSpeed < 0 || abs(currentSpeed - previousSpeed) >= 0.01 {
             updateSpeedLabels(withMetersPerSecond: currentSpeed)
             previousSpeed = currentSpeed
+        }
+        
+        // Update GPS status labels
+        updateGPSLabels(capturePipeline: capturePipeline)
+    }
+    
+    private func updateGPSLabels(capturePipeline: RosyWriterCapturePipeline) {
+        // Update GPS status label
+        if let gpsStatusLabel = gpsStatusLabel {
+            gpsStatusLabel.text = "GPS: \(capturePipeline.getGPSStatus())"
+        }
+        
+        // Update GPS coordinates label with accuracy info
+        if let gpsCoordinatesLabel = gpsCoordinatesLabel {
+            let lat = capturePipeline.getGPSLatitude()
+            let lon = capturePipeline.getGPSLongitude()
+            let accuracy = capturePipeline.getGPSHorizontalAccuracy()
+            if lat != 0.0 && lon != 0.0 {
+                if accuracy >= 0 {
+                    gpsCoordinatesLabel.text = String(format: "Lat: %.6f, Lon: %.6f (±%.1fm)", lat, lon, accuracy)
+                } else {
+                    gpsCoordinatesLabel.text = String(format: "Lat: %.6f, Lon: %.6f", lat, lon)
+                }
+            } else {
+                gpsCoordinatesLabel.text = "GPS: No fix"
+            }
         }
     }
 
@@ -598,12 +1194,112 @@ class RosyWriterViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
+    
+}
+
+// MARK: - TouchPassthroughView
+
+/// Custom UIView that passes touches through to toolbar area
+class TouchPassthroughView: UIView {
+    var toolbarHeight: CGFloat = 80 // match actual toolbar strip in landscape (44 + safe area)
+    weak var passthroughParent: UIView? // Parent view that contains the toolbar
+    
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        // Don't intercept touches in toolbar area - let them pass through to toolbar
+        let toolbarArea = CGRect(x: 0, y: bounds.height - toolbarHeight, width: bounds.width, height: toolbarHeight)
+        if toolbarArea.contains(point) {
+            return false // Don't intercept - let toolbar handle it
+        }
+        
+        // For other areas, check if point is inside any interactive subviews
+        for subview in subviews.reversed() {
+            if subview.isUserInteractionEnabled {
+                let convertedPoint = convert(point, to: subview)
+                if subview.point(inside: convertedPoint, with: event) {
+                    return true // Point is inside an interactive subview
+                }
+            }
+        }
+        
+        // Default: don't intercept touches (pass through to views behind)
+        return false
+    }
+    
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // If point is not inside this view, return nil immediately
+        if !self.point(inside: point, with: event) {
+            return nil
+        }
+        
+        // Check if touch hits any interactive subviews (sensor toggle button, etc.)
+        for subview in subviews.reversed() {
+            if subview.isUserInteractionEnabled {
+                let convertedPoint = convert(point, to: subview)
+                if let interactiveView = subview.hitTest(convertedPoint, with: event) {
+                    return interactiveView
+                }
+            }
+        }
+        
+        // No interactive subview hit, return nil to pass through
+        return nil
+    }
 }
 
 // MARK: - UIGestureRecognizerDelegate
 
 extension RosyWriterViewController: UIGestureRecognizerDelegate {
-    // Add any gesture recognizer delegate methods if needed
+    // Prevent tap gesture from intercepting touches in toolbar area
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        // Strategy: If the touch is on controls or in the toolbar strip, let the toolbar handle it.
+        // Otherwise allow the preview tap gesture (for focus) to proceed.
+        
+        // 1) Hierarchy check for buttons/controls
+        var currentView: UIView? = touch.view
+        while let view = currentView {
+            let viewClassName = String(describing: type(of: view))
+            
+            if view is UIControl {
+                print("DEBUG: Tap gesture ignored - touch on UIControl: \(viewClassName)")
+                return false
+            }
+            
+            if viewClassName.contains("BarButton") || 
+               viewClassName.contains("UINavigationButton") || 
+               viewClassName.contains("UIToolbarButton") ||
+               viewClassName.contains("_UIButtonBarButton") ||
+               viewClassName.contains("_UIModernBarButton") {
+                print("DEBUG: Tap gesture ignored - touch on bar button view: \(viewClassName)")
+                return false
+            }
+            
+            if view is UIToolbar {
+                print("DEBUG: Tap gesture ignored - touch on UIToolbar: \(viewClassName)")
+                return false
+            }
+            
+            currentView = view.superview
+        }
+        
+        // 2) Area-based check: block preview tap in the toolbar strip (full height)
+        let touchLocation = touch.location(in: view)
+        let safeAreaBottom = view.safeAreaInsets.bottom
+        let toolbarHeight: CGFloat = 60 // generous to cover toolbar height
+        let bottomToolbarArea = CGRect(
+            x: 0,
+            y: view.bounds.height - safeAreaBottom - toolbarHeight,
+            width: view.bounds.width,
+            height: toolbarHeight + safeAreaBottom
+        )
+        
+        if bottomToolbarArea.contains(touchLocation) {
+            print("DEBUG: Tap gesture ignored - touch in toolbar strip at (\(String(format: "%.1f", touchLocation.x)), \(String(format: "%.1f", touchLocation.y))), area=\(bottomToolbarArea)")
+            return false
+        }
+        
+        // Otherwise allow preview tap gesture to run (for focus)
+        return true
+    }
 }
 
 // MARK: - MFMailComposeViewControllerDelegate
@@ -879,6 +1575,17 @@ extension RosyWriterViewController {
         
         guard let cropCGImage = takenCGImage.cropping(to: cropRect) else { return image }
         return UIImage(cgImage: cropCGImage, scale: 1, orientation: image.imageOrientation)
+    }
+}
+
+// MARK: - S3UploadDelegate
+
+// MARK: - SensorOverlayViewDelegate
+
+extension RosyWriterViewController: SensorOverlayViewDelegate {
+    func sensorOverlayViewDidToggleVisibility(_ view: SensorOverlayView) {
+        // Update HUD position based on sensor visibility
+        updateHudBlockPosition(sensorsVisible: view.isVisible)
     }
 }
 

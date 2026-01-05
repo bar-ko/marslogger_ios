@@ -86,6 +86,14 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
     var fileURL: URL?
     var isRecording: Bool = false
     private(set) var currentSpeed: CLLocationSpeed = 0.0
+    
+    // GPS status for UI display
+    private(set) var gpsStatus: String = "Initializing..."
+    private(set) var gpsLatitude: Double = 0.0
+    private(set) var gpsLongitude: Double = 0.0
+    private(set) var gpsHorizontalAccuracy: Double = -1.0
+    private(set) var gpsUpdateCount: Int = 0
+    private(set) var lastGPSUpdateTimestamp: Date?
 
     private var motionManager: CMMotionManager
     private var locationManager: CLLocationManager
@@ -99,13 +107,20 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
     private var timeStartImu: String?
     private var bootTimeReference: TimeInterval = 0  // Store boot time reference for GPS synchronization
     private var lastGPSUpdateTime: TimeInterval = 0  // Track GPS update frequency
-    private var gpsUpdateCount: Int = 0  // Count GPS updates
+    
+    // Visualization buffers (always active, not just during recording)
+    private(set) var accelVisualizationBuffer: SensorRingBuffer
+    private(set) var gyroVisualizationBuffer: SensorRingBuffer
 
     // MARK: - Initialization
 
     override init() {
         self.motionManager = CMMotionManager()
         self.locationManager = CLLocationManager()
+        
+        // Initialize visualization buffers (5 second window, ~500 samples at 100 Hz)
+        self.accelVisualizationBuffer = SensorRingBuffer(maxSamples: 500, timeWindow: 5.0)
+        self.gyroVisualizationBuffer = SensorRingBuffer(maxSamples: 500, timeWindow: 5.0)
 
         super.init()
 
@@ -118,7 +133,56 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
         locationManager.distanceFilter = kCLDistanceFilterNone  // Update on every location change
         locationManager.pausesLocationUpdatesAutomatically = false  // Don't pause updates automatically
         locationManager.allowsBackgroundLocationUpdates = true  // Allow background updates
+        
+        // Start GPS location updates immediately for HUD speed display (not just when recording)
+        startGPSUpdates()
+        
+        // Start motion updates for visualization (always running)
+        startVisualizationUpdates()
     }
+    
+    // MARK: - Visualization Updates
+    
+    private func startVisualizationUpdates() {
+        guard motionManager.isGyroAvailable && motionManager.isAccelerometerAvailable else {
+            print("Motion sensors not available for visualization")
+            return
+        }
+        
+        // Use a queue for visualization updates (always running)
+        let visQueue = OperationQueue()
+        visQueue.name = "com.apple.sample.inertialRecorder.visualization"
+        visQueue.qualityOfService = .userInitiated
+        visQueue.maxConcurrentOperationCount = 1
+        
+        motionManager.gyroUpdateInterval = 1.0 / RATE
+        motionManager.accelerometerUpdateInterval = 1.0 / RATE
+        
+        motionManager.startGyroUpdates(to: visQueue) { [weak self] (gyroData, error) in
+            guard let self = self, let gyroData = gyroData else { return }
+            
+            let rotate = gyroData.rotationRate
+            self.gyroVisualizationBuffer.append(
+                timestamp: gyroData.timestamp,
+                x: rotate.x,
+                y: rotate.y,
+                z: rotate.z
+            )
+        }
+        
+        motionManager.startAccelerometerUpdates(to: visQueue) { [weak self] (accelData, error) in
+            guard let self = self, let accelData = accelData else { return }
+            
+            let accel = accelData.acceleration
+            self.accelVisualizationBuffer.append(
+                timestamp: accelData.timestamp,
+                x: -accel.x,
+                y: -accel.y,
+                z: -accel.z
+            )
+        }
+    }
+    
 
     // MARK: - Helper Methods
 
@@ -437,11 +501,14 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
     func switchRecording() {
         if isRecording {
             isRecording = false
-            motionManager.stopGyroUpdates()
-            motionManager.stopAccelerometerUpdates()
-            locationManager.stopUpdatingLocation()
+            // Don't stop motion updates - they're needed for visualization
+            // motionManager.stopGyroUpdates()
+            // motionManager.stopAccelerometerUpdates()
+            // Don't stop GPS location updates - keep running for HUD speed display
+            // locationManager.stopUpdatingLocation()
 
-            currentSpeed = 0.0
+            // Don't reset currentSpeed - keep last known speed for HUD display
+            // currentSpeed = 0.0
 
             var mainString = ""
 
@@ -491,12 +558,13 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
             }
 
             print("Stopped recording inertial data!")
+            // Motion updates continue running for visualization
         } else {
             isRecording = true
             print("Start recording inertial data!")
             rawAccelGyroData = []
             rawGPSData = []
-            currentSpeed = 0.0
+            // Don't reset currentSpeed - keep the last known speed for HUD display
             motionManager.gyroUpdateInterval = 1.0 / RATE
             motionManager.accelerometerUpdateInterval = 1.0 / RATE
 
@@ -536,6 +604,14 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
                     nw.y = rotate.y
                     nw.z = rotate.z
                     self.rawAccelGyroData?.append(nw)
+                    
+                    // Feed visualization buffer
+                    self.gyroVisualizationBuffer.append(
+                        timestamp: gyroData.timestamp,
+                        x: rotate.x,
+                        y: rotate.y,
+                        z: rotate.z
+                    )
                 }
 
                 motionManager.startAccelerometerUpdates(to: queue!) {
@@ -557,31 +633,65 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
                     nw.z = -accel.z
 
                     self.rawAccelGyroData?.append(nw)
+                    
+                    // Feed visualization buffer
+                    self.accelVisualizationBuffer.append(
+                        timestamp: accelData.timestamp,
+                        x: -accel.x,
+                        y: -accel.y,
+                        z: -accel.z
+                    )
                 }
             } else {
                 print("Gyroscope or accelerometer not available")
             }
 
-            // Start GPS location updates with maximum frequency
+            // GPS location updates are already started in init() for HUD display
+            // Ensure it's running (startGPSUpdates handles duplicates)
+            startGPSUpdates()
+        }
+    }
+    
+    // MARK: - GPS Updates
+    
+    private func startGPSUpdates() {
+        // Start GPS location updates with maximum frequency for HUD speed display
+        // Check authorization status on background queue to avoid main thread warning
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
             if CLLocationManager.locationServicesEnabled() {
-                let status = CLLocationManager.authorizationStatus()
-                if status == .notDetermined {
-                    locationManager.requestWhenInUseAuthorization()
-                } else if status == .authorizedWhenInUse
-                    || status == .authorizedAlways
-                {
-                    // Request "Always" authorization for maximum update frequency
-                    if status == .authorizedWhenInUse {
-                        locationManager.requestAlwaysAuthorization()
+                let status = self.locationManager.authorizationStatus
+                
+                DispatchQueue.main.async {
+                    switch status {
+                    case .notDetermined:
+                        self.gpsStatus = "Requesting permission..."
+                        self.locationManager.requestWhenInUseAuthorization()
+                    case .authorizedWhenInUse:
+                        self.gpsStatus = "Authorized (When In Use)"
+                        // Request "Always" authorization for maximum update frequency
+                        self.locationManager.requestAlwaysAuthorization()
+                        self.locationManager.startUpdatingLocation()
+                        print("Started GPS location updates with maximum frequency settings")
+                    case .authorizedAlways:
+                        self.gpsStatus = "Authorized (Always)"
+                        self.locationManager.startUpdatingLocation()
+                        print("Started GPS location updates with maximum frequency settings")
+                    case .denied:
+                        self.gpsStatus = "Denied"
+                        print("Location services not authorized")
+                    case .restricted:
+                        self.gpsStatus = "Restricted"
+                        print("Location services restricted")
+                    @unknown default:
+                        self.gpsStatus = "Unknown"
                     }
-                    locationManager.startUpdatingLocation()
-                    print(
-                        "Started GPS location updates with maximum frequency settings"
-                    )
-                } else {
-                    print("Location services not authorized")
                 }
             } else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.gpsStatus = "Disabled"
+                }
                 print("Location services not enabled")
             }
         }
@@ -593,14 +703,41 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
         _ manager: CLLocationManager,
         didUpdateLocations locations: [CLLocation]
     ) {
-        guard isRecording else { return }
-
         guard let location = locations.last,
             location.coordinate.latitude != 0,
             location.coordinate.longitude != 0
         else {
+            DispatchQueue.main.async { [weak self] in
+                self?.gpsStatus = "Waiting for fix..."
+            }
             return
         }
+
+        // Update GPS status and coordinates for UI display
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.gpsLatitude = location.coordinate.latitude
+            self.gpsLongitude = location.coordinate.longitude
+            self.gpsHorizontalAccuracy = location.horizontalAccuracy
+            self.gpsUpdateCount += 1
+            self.lastGPSUpdateTimestamp = Date()
+            
+            // Format status with accuracy info
+            let accuracyStr = location.horizontalAccuracy >= 0 ? String(format: "%.1fm", location.horizontalAccuracy) : "N/A"
+            self.gpsStatus = "Active (\(self.gpsUpdateCount) updates, ±\(accuracyStr))"
+        }
+
+        // Always update current speed for HUD display, even when not recording
+        let speed = location.speed >= 0 ? location.speed : 0.0  // Handle negative speed values
+        currentSpeed = speed
+        
+        // Use a local variable for logging since gpsUpdateCount is updated asynchronously
+        let updateCount = gpsUpdateCount
+        let accuracy = location.horizontalAccuracy >= 0 ? String(format: "±%.1fm", location.horizontalAccuracy) : "N/A"
+        print("GPS Update #\(updateCount): lat=\(String(format: "%.6f", location.coordinate.latitude)), lon=\(String(format: "%.6f", location.coordinate.longitude)), speed=\(String(format: "%.2f", speed)) m/s (\(String(format: "%.1f", speed * 3.6)) km/h), accuracy=\(accuracy), isRecording=\(isRecording)")
+
+        // Only append GPS data to recording buffer when actually recording
+        guard isRecording else { return }
 
         let gpsNode = GPSNodeWrapper()
         // Use the same time reference as inertial data (time since device boot)
@@ -609,11 +746,10 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
             location.timestamp.timeIntervalSince1970 - bootTimeReference
         gpsNode.latitude = location.coordinate.latitude
         gpsNode.longitude = location.coordinate.longitude
-        gpsNode.speed = location.speed >= 0 ? location.speed : 0.0  // Handle negative speed values
+        gpsNode.speed = speed
 
         rawGPSData?.append(gpsNode)
-        currentSpeed = gpsNode.speed
-        gpsUpdateCount += 1
+        // gpsUpdateCount is already incremented in the main thread block above
 
         // Log GPS update frequency every 10 updates
         if gpsUpdateCount % 10 == 0 {
@@ -639,12 +775,12 @@ class InertialRecorder: NSObject, CLLocationManagerDelegate {
     ) {
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
-            if isRecording {
-                locationManager.startUpdatingLocation()
-                print("GPS authorization granted, starting location updates")
-            }
+            // Start GPS updates regardless of recording state (for HUD speed display)
+            startGPSUpdates()
+            print("GPS authorization granted, starting location updates")
         case .denied, .restricted:
             print("GPS location access denied or restricted")
+            currentSpeed = 0.0
         case .notDetermined:
             print("GPS location authorization not determined")
         @unknown default:

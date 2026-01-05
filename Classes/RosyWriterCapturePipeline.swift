@@ -168,6 +168,16 @@ class RosyWriterCapturePipeline: NSObject {
             fatalError("Already recording")
         }
         
+        // Ensure video pipeline is ready before starting recording
+        guard outputVideoFormatDescription != nil else {
+            print("WARNING: Cannot start recording: video pipeline not ready (outputVideoFormatDescription is nil)")
+            invokeDelegateCallbackAsync {
+                let error = NSError(domain: "RosyWriterCapturePipeline", code: -1, userInfo: [NSLocalizedDescriptionKey: "Video pipeline not ready. Please wait for camera to initialize."])
+                self.delegate?.capturePipeline(self, recordingDidFailWithError: error)
+            }
+            return
+        }
+        
         transition(toRecordingStatus: .startingRecording, error: nil)
         
         inertialRecorder.switchRecording()
@@ -183,6 +193,8 @@ class RosyWriterCapturePipeline: NSObject {
         
         if let outputVideoFormatDescription = outputVideoFormatDescription, let videoCompressionSettings = videoCompressionSettings {
             recorder.addVideoTrack(withSourceFormatDescription: outputVideoFormatDescription, transform: videoTransform, settings: videoCompressionSettings)
+        } else {
+            print("WARNING: outputVideoFormatDescription or videoCompressionSettings is nil, video track not added")
         }
         
         self.recorder = recorder
@@ -308,6 +320,34 @@ class RosyWriterCapturePipeline: NSObject {
     
     func getCurrentSpeed() -> CLLocationSpeed {
         return inertialRecorder.currentSpeed
+    }
+    
+    func getGPSStatus() -> String {
+        return inertialRecorder.gpsStatus
+    }
+    
+    func getGPSLatitude() -> Double {
+        return inertialRecorder.gpsLatitude
+    }
+    
+    func getGPSLongitude() -> Double {
+        return inertialRecorder.gpsLongitude
+    }
+    
+    func getGPSHorizontalAccuracy() -> Double {
+        return inertialRecorder.gpsHorizontalAccuracy
+    }
+    
+    func getGPSUpdateCount() -> Int {
+        return inertialRecorder.gpsUpdateCount
+    }
+    
+    func getAccelVisualizationBuffer() -> SensorRingBuffer? {
+        return inertialRecorder.accelVisualizationBuffer
+    }
+    
+    func getGyroVisualizationBuffer() -> SensorRingBuffer? {
+        return inertialRecorder.gyroVisualizationBuffer
     }
     
     func transform(fromVideoBufferOrientationTo orientation: AVCaptureVideoOrientation, withAutoMirroring mirror: Bool) -> CGAffineTransform {
